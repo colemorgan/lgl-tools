@@ -9,6 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
+const errorMessages: Record<string, string> = {
+  auth_callback_error: 'Authentication failed. Please try again.',
+};
+
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +21,10 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  const callbackError = searchParams.get('error');
   const supabase = createClient();
+
+  const displayError = error || (callbackError ? errorMessages[callbackError] || 'An error occurred' : null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,9 +56,9 @@ export function LoginForm() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          {error && (
+          {displayError && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
+              {displayError}
             </div>
           )}
           <div className="space-y-2">
