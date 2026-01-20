@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { tools } from "@/config/tools";
 import { Clock, Scroll, Volume2 } from "lucide-react";
+
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Clock,
+  Scroll,
+  Volume2,
+};
 
 export function Hero() {
   return (
@@ -31,33 +38,25 @@ export function Hero() {
 
         {/* Tool Preview Cards */}
         <div className="mt-16 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="group relative rounded-2xl border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <Clock className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="mt-4 font-semibold text-foreground">Timer</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Track time spent on tasks with precision
-            </p>
-          </div>
-          <div className="group relative rounded-2xl border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <Scroll className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="mt-4 font-semibold text-foreground">Prompter</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Teleprompter for seamless presentations
-            </p>
-          </div>
-          <div className="group relative rounded-2xl border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <Volume2 className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="mt-4 font-semibold text-foreground">VOG</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Voice of God for professional announcements
-            </p>
-          </div>
+          {tools.map((tool) => {
+            const Icon = iconMap[tool.icon] || Clock;
+            return (
+              <div
+                key={tool.slug}
+                className="group relative rounded-2xl border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                  <Icon className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="mt-4 font-semibold text-foreground">
+                  {tool.name}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {tool.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
