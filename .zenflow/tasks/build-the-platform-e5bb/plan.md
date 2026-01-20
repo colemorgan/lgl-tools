@@ -53,8 +53,29 @@ Technical specification saved to `spec.md`.
 
 ---
 
-### [ ] Step: Authentication System
+### [x] Step: Authentication System
+<!-- chat-id: 9b8b6489-2abf-4ea8-8054-8dc807cdd943 -->
 <!-- agent: CLAUDE_CODE -->
+
+**Completed:**
+- Created `src/components/auth/auth-provider.tsx` with user context
+- Created `src/hooks/use-user.ts` custom hook with user and profile state
+- Created `src/app/(auth)/layout.tsx` for auth pages styling
+- Created `src/components/auth/login-form.tsx` with email/password fields and redirectTo support
+- Created `src/app/(auth)/login/page.tsx`
+- Created `src/components/auth/signup-form.tsx` with email, password, name fields
+- Created `src/app/(auth)/signup/page.tsx`
+- Created `src/components/auth/reset-password-form.tsx` for password reset request
+- Created `src/app/(auth)/reset-password/page.tsx`
+- Created `src/components/auth/update-password-form.tsx` for setting new password
+- Created `src/app/(auth)/update-password/page.tsx`
+- Created `src/app/auth/callback/route.ts` to handle Supabase auth callbacks
+- Created `src/middleware.ts` with route protection for /dashboard, /account, /tools/*
+- Auth routes redirect to dashboard if already authenticated
+
+**Verification:** `npm run build`, `npm run typecheck`, and `npm run lint` all succeed
+
+---
 
 ### [ ] Step: Landing Page
 <!-- agent: CLAUDE_CODE -->
