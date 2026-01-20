@@ -142,8 +142,32 @@ Technical specification saved to `spec.md`.
 
 ---
 
-### [ ] Step: Email Integration
+### [x] Step: Email Integration
+<!-- chat-id: 69278395-6474-43eb-8fbc-2960765954dc -->
 <!-- agent: CLAUDE_CODE -->
+
+**Completed:**
+- Installed `resend` and `@react-email/components` packages
+- Created `src/lib/resend.ts` with lazy-initialized Resend client and `sendEmail` helper function
+- Created `src/lib/supabase/admin.ts` for admin client that bypasses RLS (used in cron jobs)
+- Created email templates in `emails/` directory:
+  - `welcome.tsx` - Welcome email sent after signup confirmation
+  - `trial-ending.tsx` - Reminder email 3 days before trial expires
+  - `trial-expired.tsx` - Notification when trial has expired
+  - `payment-failed.tsx` - Alert when payment fails
+- Updated `src/app/auth/callback/route.ts` to send welcome email for new signups
+- Created `src/app/api/cron/trial-check/route.ts` for daily trial monitoring:
+  - Sends trial ending emails to users 3 days before expiration
+  - Updates expired trials to `expired_trial` status
+  - Sends trial expired emails
+  - Protected by CRON_SECRET authorization
+- Updated `src/app/api/webhooks/stripe/route.ts` to send payment failed emails
+- Created `vercel.json` with daily cron configuration (runs at 9 AM UTC)
+- Updated `.env.local.example` with `RESEND_FROM_EMAIL` variable
+
+**Verification:** `npm run build`, `npm run typecheck`, and `npm run lint` all succeed
+
+---
 
 ### [ ] Step: Polish & Optimization
 <!-- agent: CLAUDE_CODE -->

@@ -2,6 +2,8 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
+import { sendEmail } from '@/lib/resend';
+import PaymentFailedEmail from '../../../../../emails/payment-failed';
 import type Stripe from 'stripe';
 
 function getSupabaseAdmin() {
@@ -86,10 +88,33 @@ export async function POST(request: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         const subscriptionId = invoice.parent?.subscription_details?.subscription;
         if (subscriptionId && invoice.customer) {
-          await supabaseAdmin
+          const customerId = invoice.customer as string;
+
+          // Update subscription status
+          const { data: profile } = await supabaseAdmin
             .from('profiles')
             .update({ subscription_status: 'past_due' })
-            .eq('stripe_customer_id', invoice.customer as string);
+            .eq('stripe_customer_id', customerId)
+            .select('id, full_name')
+            .single();
+
+          // Send payment failed email
+          if (profile) {
+            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+            if (userData?.user?.email) {
+              try {
+                await sendEmail({
+                  to: userData.user.email,
+                  subject: 'Action required: Your payment failed',
+                  react: PaymentFailedEmail({
+                    userName: profile.full_name || 'there',
+                  }),
+                });
+              } catch (emailError) {
+                console.error('Failed to send payment failed email:', emailError);
+              }
+            }
+          }
         }
         break;
       }
