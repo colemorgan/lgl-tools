@@ -1,21 +1,10 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/resend';
 import PaymentFailedEmail from '../../../../../emails/payment-failed';
 import type Stripe from 'stripe';
-
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createClient(url, key);
-}
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -42,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  const supabaseAdmin = getSupabaseAdmin();
+  const supabaseAdmin = createAdminClient();
 
   try {
     switch (event.type) {
@@ -100,8 +89,12 @@ export async function POST(request: Request) {
 
           // Send payment failed email
           if (profile) {
-            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(profile.id);
-            if (userData?.user?.email) {
+            const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+            if (userError) {
+              console.error(`Failed to fetch user for payment failed email (profile: ${profile.id}):`, userError);
+            } else if (!userData?.user?.email) {
+              console.warn(`No email found for user ${profile.id}, cannot send payment failed email`);
+            } else {
               try {
                 await sendEmail({
                   to: userData.user.email,
@@ -114,6 +107,8 @@ export async function POST(request: Request) {
                 console.error('Failed to send payment failed email:', emailError);
               }
             }
+          } else {
+            console.warn(`No profile found for customer ${customerId}, cannot send payment failed email`);
           }
         }
         break;
@@ -130,7 +125,7 @@ export async function POST(request: Request) {
   }
 }
 
-type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
+type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 
 async function handleSubscriptionChange(
   supabaseAdmin: SupabaseAdmin,
