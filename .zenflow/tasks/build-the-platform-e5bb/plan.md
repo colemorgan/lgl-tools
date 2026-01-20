@@ -200,6 +200,9 @@ Technical specification saved to `spec.md`.
 
 ### [ ] Step: Testing and validations
 <!-- agent: CLAUDE_CODE -->
+
+### [ ] Step: Create a github repo
+<!-- agent: CLAUDE_CODE -->
 ## Implementation Tasks
 
 ### Phase 1: Project Setup & Infrastructure
