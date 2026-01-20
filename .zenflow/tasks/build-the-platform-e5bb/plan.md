@@ -96,8 +96,28 @@ Technical specification saved to `spec.md`.
 
 ---
 
-### [ ] Step: Dashboard & Tool Structure
+### [x] Step: Dashboard & Tool Structure
+<!-- chat-id: f619b8d4-d9cb-4224-a396-3809b2a93075 -->
 <!-- agent: CLAUDE_CODE -->
+
+**Completed:**
+- Created `src/app/(protected)/layout.tsx` with server-side user/profile fetching and auth redirect
+- Created `src/components/dashboard/nav.tsx` with navigation links, user avatar dropdown, and sign out
+- Created `src/app/(protected)/dashboard/page.tsx` with personalized greeting and tool grid
+- Created `src/components/dashboard/trial-banner.tsx` with dynamic messaging for all subscription states
+- Created `src/components/dashboard/tool-card.tsx` with icons, Coming Soon badges, and disabled states
+- Created `src/hooks/use-subscription.ts` with days remaining calculation and access state
+- Created `src/app/tools/layout.tsx` with authentication and subscription checks
+- Created `src/components/tools/subscription-gate.tsx` for access control prompts
+- Created `src/components/tools/tool-placeholder.tsx` reusable placeholder component
+- Created `src/app/tools/timer/page.tsx`, `prompter/page.tsx`, and `vog/page.tsx` placeholder pages
+- Created `src/app/(protected)/account/page.tsx` with profile and subscription management
+- Created `src/components/dashboard/account-form.tsx` with editable profile fields
+- Created `src/components/dashboard/subscription-card.tsx` with status badges and action buttons
+
+**Verification:** `npm run build`, `npm run typecheck`, and `npm run lint` all succeed
+
+---
 
 ### [ ] Step: Stripe Integration
 <!-- agent: CLAUDE_CODE -->
