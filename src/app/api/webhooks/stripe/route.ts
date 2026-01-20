@@ -4,11 +4,16 @@ import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 
-// Use service role key for webhook processing (bypasses RLS)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  return createClient(url, key);
+}
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -19,22 +24,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 });
   }
 
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET is not set');
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     const error = err as Error;
     console.error('Webhook signature verification failed:', error.message);
-    return NextResponse.json(
-      { error: 'Invalid signature' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
+
+  const supabaseAdmin = getSupabaseAdmin();
 
   try {
     switch (event.type) {
@@ -54,13 +60,13 @@ export async function POST(request: Request) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionChange(subscription);
+        await handleSubscriptionChange(supabaseAdmin, subscription);
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionDeleted(subscription);
+        await handleSubscriptionDeleted(supabaseAdmin, subscription);
         break;
       }
 
@@ -78,8 +84,8 @@ export async function POST(request: Request) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionIdFailed = invoice.parent?.subscription_details?.subscription;
-        if (subscriptionIdFailed && invoice.customer) {
+        const subscriptionId = invoice.parent?.subscription_details?.subscription;
+        if (subscriptionId && invoice.customer) {
           await supabaseAdmin
             .from('profiles')
             .update({ subscription_status: 'past_due' })
@@ -95,15 +101,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Webhook handler error:', error);
-    return NextResponse.json(
-      { error: 'Webhook handler failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 }
 
-async function handleSubscriptionChange(subscription: Stripe.Subscription) {
+type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
+
+async function handleSubscriptionChange(
+  supabaseAdmin: SupabaseAdmin,
+  subscription: Stripe.Subscription
+) {
   const customerId = subscription.customer as string;
+  const userId = subscription.metadata?.supabase_user_id;
 
   let status: string;
   switch (subscription.status) {
@@ -120,21 +129,55 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     case 'unpaid':
       status = 'canceled';
       break;
+    case 'incomplete':
+    case 'incomplete_expired':
+    case 'paused':
+      // These statuses mean subscription isn't active
+      console.log(`Subscription status ${subscription.status} - not updating profile`);
+      return;
     default:
-      status = 'expired_trial';
+      console.warn(`Unknown subscription status: ${subscription.status}`);
+      return;
   }
 
-  await supabaseAdmin
+  // Try to update by customer ID first
+  const { data, error } = await supabaseAdmin
     .from('profiles')
     .update({ subscription_status: status })
-    .eq('stripe_customer_id', customerId);
+    .eq('stripe_customer_id', customerId)
+    .select('id');
+
+  // If no rows updated and we have user ID from metadata, try that
+  if ((!data || data.length === 0) && userId) {
+    console.log(`No profile found for customer ${customerId}, trying user ID ${userId}`);
+    await supabaseAdmin
+      .from('profiles')
+      .update({ subscription_status: status, stripe_customer_id: customerId })
+      .eq('id', userId);
+  } else if (error) {
+    console.error('Error updating subscription status:', error);
+  }
 }
 
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+async function handleSubscriptionDeleted(
+  supabaseAdmin: SupabaseAdmin,
+  subscription: Stripe.Subscription
+) {
   const customerId = subscription.customer as string;
+  const userId = subscription.metadata?.supabase_user_id;
 
-  await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('profiles')
     .update({ subscription_status: 'canceled' })
-    .eq('stripe_customer_id', customerId);
+    .eq('stripe_customer_id', customerId)
+    .select('id');
+
+  if ((!data || data.length === 0) && userId) {
+    await supabaseAdmin
+      .from('profiles')
+      .update({ subscription_status: 'canceled' })
+      .eq('id', userId);
+  } else if (error) {
+    console.error('Error updating subscription status on delete:', error);
+  }
 }
