@@ -10,6 +10,12 @@ export interface Profile {
   updated_at: string;
 }
 
+export function getTrialDaysRemaining(trialEndsAt: string): number {
+  const trialEnds = new Date(trialEndsAt);
+  const now = new Date();
+  return Math.ceil((trialEnds.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export function hasActiveAccess(profile: Profile | null): boolean {
   if (!profile) return false;
 
@@ -18,8 +24,7 @@ export function hasActiveAccess(profile: Profile | null): boolean {
   if (status === 'active') return true;
 
   if (status === 'trialing') {
-    const trialEnds = new Date(profile.trial_ends_at);
-    return trialEnds > new Date();
+    return getTrialDaysRemaining(profile.trial_ends_at) > 0;
   }
 
   return false;

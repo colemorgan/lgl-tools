@@ -1,5 +1,5 @@
 export type { SubscriptionStatus, Profile } from './database';
-export { hasActiveAccess } from './database';
+export { hasActiveAccess, getTrialDaysRemaining } from './database';
 
 export interface Tool {
   slug: string;

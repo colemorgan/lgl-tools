@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getTrialDaysRemaining } from '@/types';
 import type { Profile } from '@/types';
 
 interface SubscriptionCardProps {
@@ -29,11 +30,7 @@ export function SubscriptionCard({ profile }: SubscriptionCardProps) {
     variant: 'outline' as const,
   };
 
-  const trialEnds = new Date(trial_ends_at);
-  const now = new Date();
-  const daysRemaining = Math.ceil(
-    (trialEnds.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const daysRemaining = getTrialDaysRemaining(trial_ends_at);
 
   return (
     <Card>
@@ -60,6 +57,13 @@ export function SubscriptionCard({ profile }: SubscriptionCardProps) {
           </p>
         )}
 
+        {subscription_status === 'past_due' && (
+          <p className="text-sm text-muted-foreground">
+            There was a problem with your last payment. Please update your
+            payment method to continue using ZenFlow tools.
+          </p>
+        )}
+
         {(subscription_status === 'expired_trial' ||
           subscription_status === 'canceled' ||
           (subscription_status === 'trialing' && daysRemaining <= 0)) && (
@@ -72,6 +76,10 @@ export function SubscriptionCard({ profile }: SubscriptionCardProps) {
           {subscription_status === 'active' && stripe_customer_id ? (
             <Button asChild variant="outline">
               <Link href="/api/create-portal">Manage Subscription</Link>
+            </Button>
+          ) : subscription_status === 'past_due' && stripe_customer_id ? (
+            <Button asChild>
+              <Link href="/api/create-portal">Update Payment Method</Link>
             </Button>
           ) : (
             <Button asChild>

@@ -52,7 +52,7 @@ export function SubscriptionGate({ profile }: SubscriptionGateProps) {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Button asChild>
-            <Link href="/api/create-checkout">Upgrade to Pro - $9/month</Link>
+            <Link href="/api/create-checkout">Upgrade to Pro</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/dashboard">Back to Dashboard</Link>

@@ -1,7 +1,6 @@
-'use client';
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { getTrialDaysRemaining } from '@/types';
 import type { Profile } from '@/types';
 
 interface TrialBannerProps {
@@ -15,25 +14,32 @@ export function TrialBanner({ profile }: TrialBannerProps) {
     return null;
   }
 
-  const trialEnds = new Date(trial_ends_at);
-  const now = new Date();
-  const daysRemaining = Math.ceil(
-    (trialEnds.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const daysRemaining = getTrialDaysRemaining(trial_ends_at);
 
-  if (subscription_status === 'expired_trial' || daysRemaining <= 0) {
+  if (
+    subscription_status === 'expired_trial' ||
+    subscription_status === 'canceled' ||
+    daysRemaining <= 0
+  ) {
     return (
       <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h3 className="font-semibold text-destructive">Trial Expired</h3>
+            <h3 className="font-semibold text-destructive">
+              {subscription_status === 'canceled'
+                ? 'Subscription Canceled'
+                : 'Trial Expired'}
+            </h3>
             <p className="text-sm text-muted-foreground">
-              Your free trial has ended. Upgrade to continue using ZenFlow
-              tools.
+              {subscription_status === 'canceled'
+                ? 'Your subscription has been canceled. Resubscribe to continue using ZenFlow tools.'
+                : 'Your free trial has ended. Upgrade to continue using ZenFlow tools.'}
             </p>
           </div>
           <Button asChild>
-            <Link href="/api/create-checkout">Upgrade Now</Link>
+            <Link href="/api/create-checkout">
+              {subscription_status === 'canceled' ? 'Resubscribe' : 'Upgrade Now'}
+            </Link>
           </Button>
         </div>
       </div>

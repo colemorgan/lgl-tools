@@ -1,4 +1,3 @@
-import { Clock, Scroll, Volume2, LucideIcon } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -7,20 +6,15 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getToolIcon } from '@/config/tools';
 import type { Tool } from '@/types';
-
-const iconMap: Record<string, LucideIcon> = {
-  Clock,
-  Scroll,
-  Volume2,
-};
 
 interface ToolPlaceholderProps {
   tool: Tool;
 }
 
 export function ToolPlaceholder({ tool }: ToolPlaceholderProps) {
-  const Icon = iconMap[tool.icon] || Clock;
+  const Icon = getToolIcon(tool.icon);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

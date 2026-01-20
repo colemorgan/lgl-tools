@@ -104,16 +104,18 @@ Technical specification saved to `spec.md`.
 - Created `src/app/(protected)/layout.tsx` with server-side user/profile fetching and auth redirect
 - Created `src/components/dashboard/nav.tsx` with navigation links, user avatar dropdown, and sign out
 - Created `src/app/(protected)/dashboard/page.tsx` with personalized greeting and tool grid
-- Created `src/components/dashboard/trial-banner.tsx` with dynamic messaging for all subscription states
+- Created `src/components/dashboard/trial-banner.tsx` with dynamic messaging for all subscription states (including `canceled`)
 - Created `src/components/dashboard/tool-card.tsx` with icons, Coming Soon badges, and disabled states
-- Created `src/hooks/use-subscription.ts` with days remaining calculation and access state
-- Created `src/app/tools/layout.tsx` with authentication and subscription checks
+- Created `src/app/tools/layout.tsx` with authentication, subscription checks, and navigation header
 - Created `src/components/tools/subscription-gate.tsx` for access control prompts
+- Created `src/components/tools/tool-header.tsx` with back to dashboard navigation
 - Created `src/components/tools/tool-placeholder.tsx` reusable placeholder component
 - Created `src/app/tools/timer/page.tsx`, `prompter/page.tsx`, and `vog/page.tsx` placeholder pages
 - Created `src/app/(protected)/account/page.tsx` with profile and subscription management
 - Created `src/components/dashboard/account-form.tsx` with editable profile fields
-- Created `src/components/dashboard/subscription-card.tsx` with status badges and action buttons
+- Created `src/components/dashboard/subscription-card.tsx` with status badges, `past_due` messaging, and action buttons
+- Added `getTrialDaysRemaining()` utility to `src/types/database.ts` for centralized calculation
+- Added `getToolIcon()` and `toolIconMap` to `src/config/tools.ts` for centralized icon management
 
 **Verification:** `npm run build`, `npm run typecheck`, and `npm run lint` all succeed
 

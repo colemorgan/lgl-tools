@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Clock, Scroll, Volume2, LucideIcon } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -9,13 +8,8 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getToolIcon } from '@/config/tools';
 import type { Tool } from '@/types';
-
-const iconMap: Record<string, LucideIcon> = {
-  Clock,
-  Scroll,
-  Volume2,
-};
 
 interface ToolCardProps {
   tool: Tool;
@@ -23,7 +17,7 @@ interface ToolCardProps {
 }
 
 export function ToolCard({ tool, hasAccess }: ToolCardProps) {
-  const Icon = iconMap[tool.icon] || Clock;
+  const Icon = getToolIcon(tool.icon);
   const isComingSoon = tool.status === 'coming_soon';
   const isDisabled = isComingSoon || !hasAccess;
 

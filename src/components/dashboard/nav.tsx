@@ -37,7 +37,7 @@ export function Nav({ userName, userEmail }: NavProps) {
         .join('')
         .toUpperCase()
         .slice(0, 2)
-    : userEmail[0].toUpperCase();
+    : userEmail?.[0]?.toUpperCase() || '?';
 
   async function handleSignOut() {
     await supabase.auth.signOut();

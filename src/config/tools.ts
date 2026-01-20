@@ -1,4 +1,15 @@
+import { Clock, Scroll, Volume2, LucideIcon } from 'lucide-react';
 import type { Tool } from '@/types';
+
+export const toolIconMap: Record<string, LucideIcon> = {
+  Clock,
+  Scroll,
+  Volume2,
+};
+
+export function getToolIcon(iconName: string): LucideIcon {
+  return toolIconMap[iconName] || Clock;
+}
 
 export const tools: Tool[] = [
   {
