@@ -121,8 +121,26 @@ Technical specification saved to `spec.md`.
 
 ---
 
-### [ ] Step: Stripe Integration
+### [x] Step: Stripe Integration
+<!-- chat-id: 5d83847e-4cca-4d33-be7d-c79920cc8e8c -->
 <!-- agent: CLAUDE_CODE -->
+
+**Completed:**
+- Installed `stripe` package
+- Created `src/lib/stripe.ts` with lazy-initialized Stripe client and `createOrRetrieveCustomer` helper
+- Created `src/app/api/create-checkout/route.ts` for checkout session creation with redirect
+- Created `src/app/api/create-portal/route.ts` for customer billing portal session
+- Created `src/app/api/webhooks/stripe/route.ts` handling:
+  - `checkout.session.completed` - links Stripe customer to profile
+  - `customer.subscription.created/updated` - updates subscription status
+  - `customer.subscription.deleted` - marks subscription as canceled
+  - `invoice.payment_succeeded` - sets status to active
+  - `invoice.payment_failed` - sets status to past_due
+- Upgrade prompts already integrated in existing components (trial-banner, subscription-card, subscription-gate)
+
+**Verification:** `npm run build`, `npm run typecheck`, and `npm run lint` all succeed
+
+---
 
 ### [ ] Step: Email Integration
 <!-- agent: CLAUDE_CODE -->
