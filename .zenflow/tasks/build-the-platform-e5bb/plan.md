@@ -1,7 +1,7 @@
-# Spec and build
+# Build the Platform - Implementation Plan
 
 ## Configuration
-- **Artifacts Path**: {@artifacts_path} → `.zenflow/tasks/{task_id}`
+- **Artifacts Path**: `.zenflow/tasks/build-the-platform-e5bb`
 
 ---
 
@@ -18,47 +18,494 @@ Do not make assumptions on important decisions — get clarification first.
 
 ## Workflow Steps
 
-### [ ] Step: Technical Specification
+### [x] Step: Technical Specification
 
-Assess the task's difficulty, as underestimating it leads to poor outcomes.
-- easy: Straightforward implementation, trivial bug fix or feature
-- medium: Moderate complexity, some edge cases or caveats to consider
-- hard: Complex logic, many caveats, architectural considerations, or high-risk changes
+**Difficulty Assessment: Hard**
 
-Create a technical specification for the task that is appropriate for the complexity level:
-- Review the existing codebase architecture and identify reusable components.
-- Define the implementation approach based on established patterns in the project.
-- Identify all source code files that will be created or modified.
-- Define any necessary data model, API, or interface changes.
-- Describe verification steps using the project's test and lint commands.
+This is a full SaaS platform implementation with:
+- Next.js 14 App Router architecture
+- Three external integrations (Supabase, Stripe, Resend)
+- Authentication and subscription state machine
+- Row-level security policies
+- 7 implementation phases with 30+ tasks
 
-Save the output to `{@artifacts_path}/spec.md` with:
-- Technical context (language, dependencies)
-- Implementation approach
-- Source code structure changes
-- Data model / API / interface changes
-- Verification approach
-
-If the task is complex enough, create a detailed implementation plan based on `{@artifacts_path}/spec.md`:
-- Break down the work into concrete tasks (incrementable, testable milestones)
-- Each task should reference relevant contracts and include verification steps
-- Replace the Implementation step below with the planned tasks
-
-Rule of thumb for step size: each step should represent a coherent unit of work (e.g., implement a component, add an API endpoint, write tests for a module). Avoid steps that are too granular (single function).
-
-Save to `{@artifacts_path}/plan.md`. If the feature is trivial and doesn't warrant this breakdown, keep the Implementation step below as is.
+Technical specification saved to `spec.md`.
 
 ---
 
-### [ ] Step: Implementation
+## Implementation Tasks
 
-Implement the task according to the technical specification and general engineering best practices.
+### Phase 1: Project Setup & Infrastructure
 
-1. Break the task into steps where possible.
-2. Implement the required changes in the codebase.
-3. Add and run relevant tests and linters.
-4. Perform basic manual verification if applicable.
-5. After completion, write a report to `{@artifacts_path}/report.md` describing:
-   - What was implemented
-   - How the solution was tested
-   - The biggest issues or challenges encountered
+#### [ ] 1.1 Initialize Next.js Project
+Create a new Next.js 14 project with TypeScript, Tailwind CSS, and App Router.
+
+**Tasks:**
+- Initialize Next.js 14 with `create-next-app`
+- Configure TypeScript with strict mode
+- Set up Tailwind CSS
+- Create `.gitignore` with standard patterns (node_modules, .next, .env.local, etc.)
+- Create `.env.local.example` with all required environment variables
+
+**Verification:** `npm run build` succeeds
+
+#### [ ] 1.2 Configure shadcn/ui
+Set up shadcn/ui component library with initial components.
+
+**Tasks:**
+- Initialize shadcn/ui with CLI
+- Install initial components: button, card, input, form, label, dialog, dropdown-menu, avatar
+- Configure `components.json` and `lib/utils.ts`
+
+**Verification:** Components render correctly in dev mode
+
+#### [ ] 1.3 Create Source Directory Structure
+Set up the complete folder structure per spec.
+
+**Tasks:**
+- Create `src/app/` directory structure (all route groups and pages)
+- Create `src/components/` directory structure (ui, landing, auth, dashboard, tools)
+- Create `src/lib/`, `src/hooks/`, `src/types/`, `src/config/` directories
+- Create `supabase/migrations/` directory
+- Create `emails/` directory for React Email templates
+
+**Verification:** All directories exist as specified in spec
+
+#### [ ] 1.4 Set Up Supabase Integration
+Configure Supabase client libraries for browser, server, and middleware.
+
+**Tasks:**
+- Install `@supabase/supabase-js` and `@supabase/ssr`
+- Create `src/lib/supabase/client.ts` (browser client)
+- Create `src/lib/supabase/server.ts` (server client with getUser, getProfile, updateProfile)
+- Create `src/lib/supabase/middleware.ts` (middleware client)
+- Create database migration `supabase/migrations/001_initial.sql` with profiles table, RLS policies, and triggers
+
+**Verification:** TypeScript compiles without errors
+
+#### [ ] 1.5 Create TypeScript Types
+Define all application types.
+
+**Tasks:**
+- Create `src/types/database.ts` with SubscriptionStatus and Profile types
+- Create `src/types/index.ts` with Tool and other app-wide types
+- Export `hasActiveAccess()` helper function
+
+**Verification:** Types can be imported and used without errors
+
+#### [ ] 1.6 Create Tool Configuration
+Define static tool configuration.
+
+**Tasks:**
+- Create `src/config/tools.ts` with timer, prompter, and vog tool definitions
+- Include slug, name, description, icon, and status for each tool
+
+**Verification:** Tool config imports correctly
+
+---
+
+### Phase 2: Authentication System
+
+#### [ ] 2.1 Create Auth Layout and Context
+Set up authentication context and layouts.
+
+**Tasks:**
+- Create `src/components/auth/auth-provider.tsx` with user context
+- Create `src/hooks/use-user.ts` custom hook
+- Create `src/app/(auth)/layout.tsx` for auth pages styling
+
+**Verification:** Auth context provides user state
+
+#### [ ] 2.2 Create Login Page
+Build the login page with form.
+
+**Tasks:**
+- Create `src/components/auth/login-form.tsx` with email/password fields
+- Create `src/app/(auth)/login/page.tsx`
+- Handle form submission with Supabase signInWithPassword
+- Add "Forgot password?" link
+- Support `redirectTo` query parameter for post-login redirect
+
+**Verification:** Can submit login form, see error for invalid credentials
+
+#### [ ] 2.3 Create Signup Page
+Build the signup page with form.
+
+**Tasks:**
+- Create `src/components/auth/signup-form.tsx` with email, password, name fields
+- Create `src/app/(auth)/signup/page.tsx`
+- Handle form submission with Supabase signUp
+- Pass full_name in user metadata for trigger to capture
+
+**Verification:** Can submit signup form
+
+#### [ ] 2.4 Create Password Reset Flow
+Build password reset request and update pages.
+
+**Tasks:**
+- Create `src/app/(auth)/reset-password/page.tsx` for email entry
+- Create `src/app/auth/callback/route.ts` to handle Supabase auth callbacks
+- Handle password reset token verification and redirect
+
+**Verification:** Password reset email can be requested
+
+#### [ ] 2.5 Implement Auth Middleware
+Create Next.js middleware for route protection.
+
+**Tasks:**
+- Create `src/middleware.ts` with route matching
+- Check authentication for protected routes (/dashboard, /account, /tools/*)
+- Redirect unauthenticated users to login with return URL
+- Allow public routes (/, /login, /signup, /reset-password, /api/webhooks/*)
+
+**Verification:** Protected routes redirect to login when not authenticated
+
+---
+
+### Phase 3: Landing Page
+
+#### [ ] 3.1 Create Root Layout
+Set up the root application layout.
+
+**Tasks:**
+- Create `src/app/layout.tsx` with metadata, fonts, and providers
+- Create `src/app/globals.css` with Tailwind imports and custom styles
+- Configure Open Graph and meta tags for SEO
+
+**Verification:** Layout renders without errors
+
+#### [ ] 3.2 Create Hero Section
+Build the hero section component.
+
+**Tasks:**
+- Create `src/components/landing/hero.tsx`
+- Include headline, subheadline, and CTA buttons
+- Add visual element (illustration or tool preview)
+- Link "Start Free Trial" to /signup
+
+**Verification:** Hero displays correctly and buttons navigate
+
+#### [ ] 3.3 Create Features Section
+Build the features/tools showcase section.
+
+**Tasks:**
+- Create `src/components/landing/features.tsx`
+- Display tool cards with icons, names, and descriptions
+- Use tool config from `src/config/tools.ts`
+- Show "Coming Soon" badge for tools in development
+
+**Verification:** Features section shows all tools
+
+#### [ ] 3.4 Create Pricing Section
+Build the pricing section.
+
+**Tasks:**
+- Create `src/components/landing/pricing.tsx`
+- Display single pricing tier with features list
+- Show "15-day free trial" prominently
+- Include CTA button linking to /signup
+
+**Verification:** Pricing displays correctly
+
+#### [ ] 3.5 Create Footer
+Build the footer component.
+
+**Tasks:**
+- Create `src/components/landing/footer.tsx`
+- Include copyright, links (Terms, Privacy), and contact info
+
+**Verification:** Footer renders at bottom of page
+
+#### [ ] 3.6 Assemble Landing Page
+Combine all sections into the landing page.
+
+**Tasks:**
+- Create `src/app/page.tsx` with all landing components
+- Add navigation header with Login/Signup buttons
+- Ensure responsive design across breakpoints
+- Optimize images and fonts for performance
+
+**Verification:** Lighthouse performance score > 90, page loads < 2s
+
+---
+
+### Phase 4: Dashboard & Tool Structure
+
+#### [ ] 4.1 Create Protected Layout
+Set up layout for authenticated pages.
+
+**Tasks:**
+- Create `src/app/(protected)/layout.tsx`
+- Fetch user and profile server-side
+- Redirect to login if not authenticated
+- Create `src/components/dashboard/nav.tsx` navigation component
+
+**Verification:** Protected layout renders with user data
+
+#### [ ] 4.2 Create Dashboard Page
+Build the main dashboard page.
+
+**Tasks:**
+- Create `src/app/(protected)/dashboard/page.tsx`
+- Display greeting with user's name
+- Show subscription status and trial countdown
+- Create `src/components/dashboard/trial-banner.tsx` for trial status display
+
+**Verification:** Dashboard shows user info and trial status
+
+#### [ ] 4.3 Create Tool Cards
+Build tool card components for dashboard.
+
+**Tasks:**
+- Create `src/components/dashboard/tool-card.tsx`
+- Display tool icon, name, description
+- Link to tool URL with `target="_blank"` for new tab
+- Show disabled state for coming soon tools
+
+**Verification:** Tool cards display and link correctly
+
+#### [ ] 4.4 Create Subscription Hook
+Build subscription status hook.
+
+**Tasks:**
+- Create `src/hooks/use-subscription.ts`
+- Calculate days remaining in trial
+- Determine if user has active access
+- Expose subscription state for components
+
+**Verification:** Hook returns correct subscription state
+
+#### [ ] 4.5 Create Tool Page Layout
+Set up layout for tool pages.
+
+**Tasks:**
+- Create `src/app/tools/layout.tsx`
+- Check authentication and subscription status
+- Create `src/components/tools/subscription-gate.tsx` for access control
+- Redirect to login if not authenticated
+- Show upgrade prompt if subscription expired
+
+**Verification:** Tools layout enforces auth and subscription checks
+
+#### [ ] 4.6 Create Placeholder Tool Pages
+Build placeholder pages for each tool.
+
+**Tasks:**
+- Create `src/app/tools/timer/page.tsx` with timer placeholder UI
+- Create `src/app/tools/prompter/page.tsx` with prompter placeholder UI
+- Create `src/app/tools/vog/page.tsx` with VOG placeholder UI
+- Create `src/components/tools/tool-placeholder.tsx` reusable component
+- Include tool description and "Coming Soon" messaging
+
+**Verification:** Each tool URL loads its placeholder page
+
+#### [ ] 4.7 Create Account Page
+Build user account settings page.
+
+**Tasks:**
+- Create `src/app/(protected)/account/page.tsx`
+- Display profile information (name, email)
+- Allow profile updates
+- Show subscription status
+- Add "Manage Subscription" button (links to Stripe Portal)
+
+**Verification:** Account page displays and updates work
+
+---
+
+### Phase 5: Stripe Integration
+
+#### [ ] 5.1 Set Up Stripe Utilities
+Configure Stripe client and utilities.
+
+**Tasks:**
+- Install `stripe` package
+- Create `src/lib/stripe.ts` with Stripe client initialization
+- Add helper functions for customer creation
+
+**Verification:** Stripe client initializes without errors
+
+#### [ ] 5.2 Create Checkout API Route
+Build checkout session creation endpoint.
+
+**Tasks:**
+- Create `src/app/api/create-checkout/route.ts`
+- Validate authenticated user
+- Create or retrieve Stripe customer
+- Create checkout session with price and metadata
+- Return checkout URL
+
+**Verification:** API returns valid checkout URL
+
+#### [ ] 5.3 Create Customer Portal API Route
+Build customer portal session endpoint.
+
+**Tasks:**
+- Create `src/app/api/create-portal/route.ts`
+- Validate authenticated user has stripe_customer_id
+- Create portal session
+- Return portal URL
+
+**Verification:** API returns valid portal URL
+
+#### [ ] 5.4 Create Stripe Webhook Handler
+Build webhook endpoint for subscription events.
+
+**Tasks:**
+- Create `src/app/api/webhooks/stripe/route.ts`
+- Verify webhook signature
+- Handle `checkout.session.completed` - link customer to profile
+- Handle `customer.subscription.created/updated/deleted` - update subscription_status
+- Handle `invoice.payment_succeeded` - set status to active
+- Handle `invoice.payment_failed` - set status to past_due
+
+**Verification:** Webhook events update profile correctly (test with Stripe CLI)
+
+#### [ ] 5.5 Add Upgrade Prompts
+Integrate upgrade flows throughout the app.
+
+**Tasks:**
+- Add upgrade button to trial banner on dashboard
+- Create upgrade prompt component for expired trials
+- Connect buttons to checkout API
+- Handle successful payment redirect
+
+**Verification:** Upgrade flow works end-to-end
+
+---
+
+### Phase 6: Email Integration
+
+#### [ ] 6.1 Set Up Resend and React Email
+Configure email infrastructure.
+
+**Tasks:**
+- Install `resend` and `@react-email/components`
+- Create `src/lib/resend.ts` with Resend client and send function
+- Create base email layout component
+
+**Verification:** Resend client initializes
+
+#### [ ] 6.2 Create Email Templates
+Build all required email templates.
+
+**Tasks:**
+- Create `emails/welcome.tsx` - welcome email after signup
+- Create `emails/trial-ending.tsx` - 3 days before trial expiration
+- Create `emails/trial-expired.tsx` - when trial expires
+- Create `emails/payment-failed.tsx` - when invoice payment fails
+
+**Verification:** Templates render correctly in React Email preview
+
+#### [ ] 6.3 Send Welcome Email on Signup
+Trigger welcome email for new users.
+
+**Tasks:**
+- Add email sending to signup success flow
+- Send from app after profile creation confirmed
+
+**Verification:** Welcome email received after signup
+
+#### [ ] 6.4 Create Trial Check Cron Job
+Build cron endpoint for trial monitoring.
+
+**Tasks:**
+- Create `src/app/api/cron/trial-check/route.ts`
+- Verify CRON_SECRET header
+- Query users with trials ending in 3 days - send reminder
+- Query users with expired trials - update status and send email
+- Create `vercel.json` with cron configuration
+
+**Verification:** Cron job executes and sends appropriate emails
+
+---
+
+### Phase 7: Polish & Optimization
+
+#### [ ] 7.1 Add Loading and Error States
+Implement comprehensive loading and error handling.
+
+**Tasks:**
+- Create loading.tsx files for route segments
+- Create error.tsx files for route segments
+- Add form validation feedback
+- Handle API errors gracefully
+
+**Verification:** All states display appropriately
+
+#### [ ] 7.2 Optimize Performance
+Ensure app meets performance requirements.
+
+**Tasks:**
+- Optimize images with Next.js Image component
+- Implement proper caching headers
+- Review and optimize bundle size
+- Test with Lighthouse
+
+**Verification:** Lighthouse performance > 90
+
+#### [ ] 7.3 SEO and Meta Tags
+Complete SEO optimization.
+
+**Tasks:**
+- Add OpenGraph images
+- Configure robots.txt and sitemap
+- Add structured data where appropriate
+- Verify meta tags on all pages
+
+**Verification:** Social shares display correctly
+
+#### [ ] 7.4 Final Review and Testing
+Complete end-to-end testing.
+
+**Tasks:**
+- Test complete signup flow
+- Test complete login flow (including direct tool access)
+- Test subscription upgrade flow
+- Test password reset flow
+- Test all email triggers
+- Security review (RLS policies, API validation)
+
+**Verification:** All user flows work end-to-end, `npm run build` succeeds, `npm run lint` passes
+
+---
+
+## Verification Commands
+
+```bash
+# Type checking
+npm run typecheck        # tsc --noEmit
+
+# Linting
+npm run lint            # next lint
+
+# Build verification
+npm run build           # next build
+
+# Development
+npm run dev             # next dev
+```
+
+## Environment Variables Required
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Stripe
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_PRICE_ID=
+
+# Resend
+RESEND_API_KEY=
+
+# Vercel Cron
+CRON_SECRET=
+
+# App
+NEXT_PUBLIC_APP_URL=
+```
