@@ -77,8 +77,24 @@ Technical specification saved to `spec.md`.
 
 ---
 
-### [ ] Step: Landing Page
+### [x] Step: Landing Page
+<!-- chat-id: b59aef95-f86a-4397-ad04-1e4110ef2213 -->
 <!-- agent: CLAUDE_CODE -->
+
+**Completed:**
+- Updated `src/app/layout.tsx` with comprehensive SEO metadata (OpenGraph, Twitter cards, keywords)
+- Created `src/components/landing/header.tsx` with navigation and auth buttons
+- Created `src/components/landing/hero.tsx` with headline, CTAs, and tool preview cards
+- Created `src/components/landing/features.tsx` using tool config with feature lists and "Coming Soon" badges
+- Created `src/components/landing/pricing.tsx` with single Pro tier ($9/month) and feature checklist
+- Created `src/components/landing/footer.tsx` with links and copyright
+- Created `src/components/landing/index.ts` barrel export
+- Assembled `src/app/page.tsx` with all landing components
+- Added shadcn/ui `badge` component
+
+**Verification:** `npm run build`, `npm run typecheck`, and `npm run lint` all succeed
+
+---
 
 ### [ ] Step: Dashboard & Tool Structure
 <!-- agent: CLAUDE_CODE -->
