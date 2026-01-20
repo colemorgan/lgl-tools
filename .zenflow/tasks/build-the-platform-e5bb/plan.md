@@ -198,8 +198,36 @@ Technical specification saved to `spec.md`.
 
 ---
 
-### [ ] Step: Testing and validations
+### [x] Step: Testing and validations
+<!-- chat-id: 12310b5b-8fe9-4cdd-965e-7c34c4d7a79e -->
 <!-- agent: CLAUDE_CODE -->
+
+**Completed:**
+- Installed Jest, React Testing Library, and jest-environment-jsdom
+- Created `jest.config.js` with Next.js integration and module aliases
+- Created `jest.setup.js` with jest-dom imports
+- Added test scripts to `package.json`: `test`, `test:watch`, `test:coverage`
+- Created unit tests for utility functions:
+  - `src/__tests__/database.test.ts` - Tests for `getTrialDaysRemaining` and `hasActiveAccess`
+  - `src/__tests__/tools.test.ts` - Tests for tool configuration and helper functions
+  - `src/__tests__/utils.test.ts` - Tests for `cn` utility function
+- Created component tests:
+  - `src/__tests__/components/login-form.test.tsx` - Tests for login form rendering and interaction
+  - `src/__tests__/components/signup-form.test.tsx` - Tests for signup form rendering and interaction
+- Created API route tests:
+  - `src/__tests__/api/stripe.test.ts` - Tests for Stripe utilities (with mocked SDK)
+  - `src/__tests__/api/resend.test.ts` - Tests for Resend email utilities
+- Created environment validation:
+  - `src/lib/env.ts` - Environment variable validation utilities
+  - `src/__tests__/env.test.ts` - Tests for env validation
+- Configured `.eslintrc.json` to ignore test files
+- Configured `tsconfig.json` to exclude test files from main build
+
+**Test Results:** 54 tests passing across 8 test suites
+
+**Verification:** `npm run test`, `npm run build`, `npm run typecheck`, and `npm run lint` all succeed
+
+---
 
 ### [ ] Step: Create a github repo
 <!-- agent: CLAUDE_CODE -->
