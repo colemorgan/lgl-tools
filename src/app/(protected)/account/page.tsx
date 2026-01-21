@@ -24,7 +24,7 @@ export default async function AccountPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Account</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">Account</h1>
           <p className="text-muted-foreground mt-1">
             Manage your profile and subscription
           </p>

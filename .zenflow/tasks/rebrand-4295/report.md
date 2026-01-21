@@ -51,8 +51,22 @@ Updated subscription-related copy to remove "ZenFlow" branding:
 
 ### 7. OG/Twitter Images
 Updated social card images:
-- `src/app/opengraph-image.tsx`: Updated alt text and h1 to "Let's Go Live"
-- `src/app/twitter-image.tsx`: Updated alt text and h1 to "Let's Go Live"
+- `src/app/opengraph-image.tsx`: Updated alt text, h1 to "Let's Go Live", and brand colors
+- `src/app/twitter-image.tsx`: Updated alt text, h1 to "Let's Go Live", and brand colors
+- Background updated to Dark Navy (#2E323C)
+- Tool badges now use Bright Purple (#7567F8)
+- Subtitle text uses Light Gray (#9096A4)
+
+### 8. URL References
+Updated fallback URLs from zenflow.app to letsgolive.io:
+- `src/app/sitemap.ts`: Sitemap base URL
+- `src/app/robots.ts`: Robots.txt base URL
+
+### 9. Heading Typography
+Applied Poppins font (`font-heading` class) to major headings:
+- Landing page: Hero h1, Features h2, Pricing h2/h3
+- Dashboard: Main h1, "Your Tools" h2
+- Account page: Main h1
 
 ## Files Created
 | File | Purpose |
@@ -77,8 +91,15 @@ Updated social card images:
 | `src/components/tools/subscription-gate.tsx` | Updated copy |
 | `src/components/dashboard/trial-banner.tsx` | Updated copy |
 | `src/components/dashboard/subscription-card.tsx` | Updated copy |
-| `src/app/opengraph-image.tsx` | Updated alt and h1 text |
-| `src/app/twitter-image.tsx` | Updated alt and h1 text |
+| `src/app/opengraph-image.tsx` | Updated alt, h1 text, and brand colors |
+| `src/app/twitter-image.tsx` | Updated alt, h1 text, and brand colors |
+| `src/app/sitemap.ts` | Updated fallback URL to letsgolive.io |
+| `src/app/robots.ts` | Updated fallback URL to letsgolive.io |
+| `src/components/landing/hero.tsx` | Added font-heading to h1 |
+| `src/components/landing/features.tsx` | Added font-heading to h2 |
+| `src/components/landing/pricing.tsx` | Added font-heading to h2, h3 |
+| `src/app/(protected)/dashboard/page.tsx` | Added font-heading to h1, h2 |
+| `src/app/(protected)/account/page.tsx` | Added font-heading to h1 |
 
 ## How the Solution Was Tested
 
@@ -102,4 +123,6 @@ Updated social card images:
 
 3. **Product Copy Strategy**: Instead of using "LGL Tools" as suggested in the spec, I opted for more neutral phrasing ("our tools", "the tools") which sounds more natural and doesn't require introducing a new abbreviation.
 
-4. **OG/Twitter Images**: These use `ImageResponse` which doesn't support external images, so the brand name is rendered as text ("Let's Go Live") rather than the logo image. The dark background was kept for better social card visibility.
+4. **OG/Twitter Images**: These use `ImageResponse` which doesn't support external images, so the brand name is rendered as text ("Let's Go Live") rather than the logo image. Colors were updated to use the brand palette (Dark Navy background, Bright Purple tool badges).
+
+5. **Favicon**: The favicon was not updated as part of this rebrand. A separate task may be needed to generate and replace the favicon with one based on the Let's Go Live logo spiral icon.
