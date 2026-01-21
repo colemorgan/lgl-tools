@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Logo } from '@/components/ui/logo';
 
 export default function AuthLayout({
   children,
@@ -8,11 +8,9 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <Link href="/" className="text-2xl font-bold">
-            ZenFlow
-          </Link>
-          <p className="mt-2 text-sm text-muted-foreground">
+        <div className="flex flex-col items-center text-center">
+          <Logo height={40} />
+          <p className="mt-4 text-sm text-muted-foreground">
             Professional tools for creators
           </p>
         </div>

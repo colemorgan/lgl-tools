@@ -4,8 +4,8 @@ import { LoginForm } from '@/components/auth/login-form';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Sign In - ZenFlow',
-  description: 'Sign in to your ZenFlow account',
+  title: "Sign In - Let's Go Live",
+  description: "Sign in to your Let's Go Live account",
 };
 
 export default function LoginPage() {

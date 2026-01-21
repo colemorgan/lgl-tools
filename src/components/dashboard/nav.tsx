@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Logo } from '@/components/ui/logo';
 import { cn } from '@/lib/utils';
 
 interface NavProps {
@@ -49,9 +50,7 @@ export function Nav({ userName, userEmail }: NavProps) {
     <header className="border-b bg-background">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="text-xl font-bold">
-            ZenFlow
-          </Link>
+          <Logo height={32} href="/dashboard" />
           <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
               <Link

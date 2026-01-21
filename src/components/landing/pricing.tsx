@@ -16,7 +16,7 @@ export function Pricing() {
     <section id="pricing" className="py-20 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Simple, transparent pricing
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -27,7 +27,7 @@ export function Pricing() {
         <div className="mx-auto mt-16 max-w-lg">
           <div className="rounded-3xl border-2 border-primary bg-card p-8 shadow-lg sm:p-10">
             <div className="flex items-baseline justify-between">
-              <h3 className="text-2xl font-bold text-foreground">Pro</h3>
+              <h3 className="font-heading text-2xl font-bold text-foreground">Pro</h3>
               <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
                 15-day free trial
               </span>

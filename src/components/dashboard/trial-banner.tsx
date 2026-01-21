@@ -32,8 +32,8 @@ export function TrialBanner({ profile }: TrialBannerProps) {
             </h3>
             <p className="text-sm text-muted-foreground">
               {subscription_status === 'canceled'
-                ? 'Your subscription has been canceled. Resubscribe to continue using ZenFlow tools.'
-                : 'Your free trial has ended. Upgrade to continue using ZenFlow tools.'}
+                ? 'Your subscription has been canceled. Resubscribe to continue using our tools.'
+                : 'Your free trial has ended. Upgrade to continue using our tools.'}
             </p>
           </div>
           <Button asChild>
@@ -85,7 +85,7 @@ export function TrialBanner({ profile }: TrialBannerProps) {
             <p className="text-sm text-muted-foreground">
               {urgency
                 ? 'Your trial is ending soon. Upgrade now to keep access to all tools.'
-                : 'Enjoying ZenFlow? Upgrade anytime to continue after your trial.'}
+                : 'Enjoying the tools? Upgrade anytime to continue after your trial.'}
             </p>
           </div>
           <Button asChild variant={urgency ? 'default' : 'outline'}>
