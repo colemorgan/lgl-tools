@@ -139,14 +139,14 @@ These files use `ImageResponse` from `next/og` and render text dynamically. They
 
 | File | Line(s) | Current Text | New Text |
 |------|---------|--------------|----------|
-| `src/components/tools/subscription-gate.tsx` | 27 | "ZenFlow tools" | "Let's Go Live tools" |
-| `src/components/tools/subscription-gate.tsx` | 49 | "ZenFlow Pro" | "Let's Go Live Pro" |
-| `src/components/dashboard/trial-banner.tsx` | 35 | "ZenFlow tools" | "Let's Go Live tools" |
-| `src/components/dashboard/trial-banner.tsx` | 36 | "ZenFlow tools" | "Let's Go Live tools" |
-| `src/components/dashboard/trial-banner.tsx` | 88 | "Enjoying ZenFlow?" | "Enjoying Let's Go Live?" |
-| `src/components/dashboard/subscription-card.tsx` | 56 | "ZenFlow tools" | "Let's Go Live tools" |
-| `src/components/dashboard/subscription-card.tsx` | 63 | "ZenFlow tools" | "Let's Go Live tools" |
-| `src/components/dashboard/subscription-card.tsx` | 71 | "ZenFlow tools" | "Let's Go Live tools" |
+| `src/components/tools/subscription-gate.tsx` | 27 | "ZenFlow tools" | "LGL Tools" |
+| `src/components/tools/subscription-gate.tsx` | 49 | "ZenFlow Pro" | "LGL Tools Pro" |
+| `src/components/dashboard/trial-banner.tsx` | 35 | "ZenFlow tools" | "LGL Tools" |
+| `src/components/dashboard/trial-banner.tsx` | 36 | "ZenFlow tools" | "LGL Tools" |
+| `src/components/dashboard/trial-banner.tsx` | 88 | "Enjoying ZenFlow?" | "Enjoying LGL Tools?" |
+| `src/components/dashboard/subscription-card.tsx` | 56 | "ZenFlow tools" | "LGL Tools" |
+| `src/components/dashboard/subscription-card.tsx` | 63 | "ZenFlow tools" | "LGL Tools" |
+| `src/components/dashboard/subscription-card.tsx` | 71 | "ZenFlow tools" | "LGL Tools" |
 | `src/app/(auth)/layout.tsx` | 15 | "Professional tools for creators" | Keep or update tagline |
 
 ### Category 5: Styling/Theming
@@ -203,7 +203,7 @@ npm run lint
    - Subscription card copy updated
 
 4. **Subscription Gate** (when trial expired):
-   - Copy mentions "Let's Go Live" not "ZenFlow"
+   - Copy mentions "LGL Tools" not "ZenFlow"
 
 5. **Mobile Responsiveness**:
    - Logo scales appropriately
