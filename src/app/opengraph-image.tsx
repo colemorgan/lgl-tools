@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-export const alt = "ZenFlow - Professional Tools for Creators";
+export const alt = "Let's Go Live - Professional Tools for Creators";
 export const size = {
   width: 1200,
   height: 630,
@@ -43,7 +43,7 @@ export default async function Image() {
               letterSpacing: "-0.02em",
             }}
           >
-            ZenFlow
+            Let&apos;s Go Live
           </h1>
           <p
             style={{

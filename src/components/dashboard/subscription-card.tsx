@@ -53,14 +53,14 @@ export function SubscriptionCard({ profile }: SubscriptionCardProps) {
 
         {subscription_status === 'active' && (
           <p className="text-sm text-muted-foreground">
-            You have full access to all ZenFlow tools.
+            You have full access to all tools.
           </p>
         )}
 
         {subscription_status === 'past_due' && (
           <p className="text-sm text-muted-foreground">
             There was a problem with your last payment. Please update your
-            payment method to continue using ZenFlow tools.
+            payment method to continue using our tools.
           </p>
         )}
 
@@ -68,7 +68,7 @@ export function SubscriptionCard({ profile }: SubscriptionCardProps) {
           subscription_status === 'canceled' ||
           (subscription_status === 'trialing' && daysRemaining <= 0)) && (
           <p className="text-sm text-muted-foreground">
-            Upgrade to continue using ZenFlow tools.
+            Upgrade to continue using our tools.
           </p>
         )}
 

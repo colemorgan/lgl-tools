@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/ui/logo";
 
 const footerLinks = {
   product: [
@@ -24,9 +25,7 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="text-xl font-bold text-foreground">
-              ZenFlow
-            </Link>
+            <Logo height={28} />
             <p className="mt-4 text-sm text-muted-foreground">
               Professional tools for creators. Enhance your workflow and create
               better content.
@@ -88,7 +87,7 @@ export function Footer() {
         {/* Bottom Section */}
         <div className="mt-12 border-t pt-8">
           <p className="text-center text-sm text-muted-foreground">
-            &copy; {currentYear} ZenFlow. All rights reserved.
+            &copy; {currentYear} Let&apos;s Go Live. All rights reserved.
           </p>
         </div>
       </div>

@@ -9,6 +9,11 @@ const config: Config = {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			sans: ['var(--font-lato)', 'system-ui', 'sans-serif'],
+  			heading: ['var(--font-poppins)', 'system-ui', 'sans-serif'],
+  			mono: ['var(--font-geist-mono)', 'monospace'],
+  		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

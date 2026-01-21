@@ -24,7 +24,7 @@ export function SubscriptionGate({ profile }: SubscriptionGateProps) {
             <CardTitle>Payment Issue</CardTitle>
             <CardDescription>
               There was a problem with your last payment. Please update your
-              payment method to continue using ZenFlow tools.
+              payment method to continue using our tools.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
@@ -46,8 +46,8 @@ export function SubscriptionGate({ profile }: SubscriptionGateProps) {
         <CardHeader className="text-center">
           <CardTitle>Upgrade to Continue</CardTitle>
           <CardDescription>
-            Your free trial has ended. Upgrade to ZenFlow Pro to continue using
-            all tools.
+            Your free trial has ended. Upgrade to Pro to continue using all
+            tools.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
