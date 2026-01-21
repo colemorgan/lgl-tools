@@ -26,16 +26,9 @@ This is a straightforward rebrand task with well-defined requirements:
 
 ### 1. Logo Integration
 
-**Current State**: Text-only "ZenFlow" branding in 5 locations
+**Current State**: Text-only "ZenFlow" branding in multiple locations
 
 **Target State**: "Let's Go Live" logo image with consistent sizing
-
-**Files to Modify**:
-- `src/components/landing/header.tsx` - Line 26-28 (main header logo)
-- `src/components/landing/footer.tsx` - Line 27-29 (footer logo)
-- `src/components/dashboard/nav.tsx` - Line 52-54 (dashboard nav logo)
-- `src/app/(auth)/layout.tsx` - Line 12-14 (auth pages logo)
-- Mobile sheet in header.tsx - Line 63 (SheetTitle)
 
 **Implementation**:
 1. Copy logo PNG to `/public/logo.png`
@@ -93,51 +86,84 @@ This is a straightforward rebrand task with well-defined requirements:
 
 **File to Modify**: `src/app/layout.tsx`
 
-### 4. Metadata Update
+### 4. Dark Mode Strategy
 
-**Files to Modify**: `src/app/layout.tsx`
+The provided logo has dark text (`#2E323C`) which won't be visible on dark backgrounds. Since the user requested "keep the background white" and "mostly black and white", we will:
+- Keep the site in light mode only (white background)
+- Remove or disable the dark mode CSS variables section
+- This simplifies the implementation and matches the user's request
 
-**Changes**:
-- Title: "ZenFlow" → "Let's Go Live"
-- Description: Update to reflect Let's Go Live brand
-- Author/Creator: Update to "Let's Go Live"
-- OpenGraph/Twitter: Update all references
-- App URL env var: Consider `NEXT_PUBLIC_APP_URL` update
+### 5. OG/Twitter Image Files
 
-### 5. Copy Updates
-
-**Files with hardcoded copy**:
-- `src/app/(auth)/layout.tsx` - Line 15: "Professional tools for creators"
-- `src/components/landing/footer.tsx` - Line 30-33, Line 91: Brand description & copyright
-- `src/components/landing/hero.tsx` - No direct brand references (can keep as-is)
+These files use `ImageResponse` from `next/og` and render text dynamically. They need special handling:
+- Update the `alt` export text from "ZenFlow" to "Let's Go Live"
+- Update the `<h1>` text from "ZenFlow" to "Let's Go Live"
+- Keep the dark background for these images (social cards look better dark)
 
 ---
 
-## Source Code Structure Changes
+## Complete Inventory of Files to Modify
 
-### New Files
+### Category 1: Logo/Brand Name Display (14 files total)
+
+| File | Line(s) | Current Content | Change Required |
+|------|---------|-----------------|-----------------|
+| `src/components/landing/header.tsx` | 26-28 | `ZenFlow` text | Replace with Logo component |
+| `src/components/landing/header.tsx` | 63 | `<SheetTitle>ZenFlow</SheetTitle>` | Replace with Logo component |
+| `src/components/landing/footer.tsx` | 27-29 | `ZenFlow` text link | Replace with Logo component |
+| `src/components/landing/footer.tsx` | 91 | `ZenFlow. All rights reserved` | Update to "Let's Go Live" |
+| `src/components/dashboard/nav.tsx` | 52-54 | `ZenFlow` text link | Replace with Logo component |
+| `src/app/(auth)/layout.tsx` | 12-14 | `ZenFlow` text link | Replace with Logo component |
+
+### Category 2: Metadata (Titles & Descriptions)
+
+| File | Line(s) | Change Required |
+|------|---------|-----------------|
+| `src/app/layout.tsx` | 17 | Update `appUrl` fallback domain |
+| `src/app/layout.tsx` | 19-57 | Update all "ZenFlow" references in metadata |
+| `src/app/(auth)/login/page.tsx` | 6-9 | Update title/description |
+| `src/app/(auth)/signup/page.tsx` | 5-8 | Update title/description |
+| `src/app/(auth)/reset-password/page.tsx` | 5-8 | Update title/description |
+| `src/app/(auth)/update-password/page.tsx` | 5-8 | Update title/description |
+
+### Category 3: OG/Twitter Images
+
+| File | Line(s) | Change Required |
+|------|---------|-----------------|
+| `src/app/opengraph-image.tsx` | 5 | Update `alt` export |
+| `src/app/opengraph-image.tsx` | 46 | Update `<h1>` text |
+| `src/app/twitter-image.tsx` | 5 | Update `alt` export |
+| `src/app/twitter-image.tsx` | 46 | Update `<h1>` text |
+
+### Category 4: Product Copy (Brand mentions in UI text)
+
+| File | Line(s) | Current Text | New Text |
+|------|---------|--------------|----------|
+| `src/components/tools/subscription-gate.tsx` | 27 | "ZenFlow tools" | "Let's Go Live tools" |
+| `src/components/tools/subscription-gate.tsx` | 49 | "ZenFlow Pro" | "Let's Go Live Pro" |
+| `src/components/dashboard/trial-banner.tsx` | 35 | "ZenFlow tools" | "Let's Go Live tools" |
+| `src/components/dashboard/trial-banner.tsx` | 36 | "ZenFlow tools" | "Let's Go Live tools" |
+| `src/components/dashboard/trial-banner.tsx` | 88 | "Enjoying ZenFlow?" | "Enjoying Let's Go Live?" |
+| `src/components/dashboard/subscription-card.tsx` | 56 | "ZenFlow tools" | "Let's Go Live tools" |
+| `src/components/dashboard/subscription-card.tsx` | 63 | "ZenFlow tools" | "Let's Go Live tools" |
+| `src/components/dashboard/subscription-card.tsx` | 71 | "ZenFlow tools" | "Let's Go Live tools" |
+| `src/app/(auth)/layout.tsx` | 15 | "Professional tools for creators" | Keep or update tagline |
+
+### Category 5: Styling/Theming
+
+| File | Change Required |
+|------|-----------------|
+| `src/app/globals.css` | Update CSS color variables |
+| `src/app/layout.tsx` | Update fonts to Poppins/Lato |
+
+---
+
+## New Files to Create
 
 | File | Purpose |
 |------|---------|
-| `public/logo.png` | Logo asset |
+| `public/logo.png` | Logo asset (copy from .zenflow-images) |
 | `src/components/ui/logo.tsx` | Reusable logo component |
-
-### Modified Files
-
-| File | Changes |
-|------|---------|
-| `src/app/globals.css` | Update CSS color variables |
-| `src/app/layout.tsx` | Update fonts, metadata |
-| `src/components/landing/header.tsx` | Replace text with Logo component |
-| `src/components/landing/footer.tsx` | Replace text with Logo component, update copy |
-| `src/components/dashboard/nav.tsx` | Replace text with Logo component |
-| `src/app/(auth)/layout.tsx` | Replace text with Logo component |
-
-### Tailwind Config
-
-| File | Changes |
-|------|---------|
-| `tailwind.config.ts` | Add brand accent colors as custom extensions (optional) |
 
 ---
 
@@ -164,40 +190,44 @@ npm run lint
    - Logo displays correctly in footer
    - Color scheme is black/white with accent splashes
    - Background is white
+   - Copyright text updated
 
-2. **Auth Pages** (`/login`, `/signup`):
+2. **Auth Pages** (`/login`, `/signup`, `/reset-password`, `/update-password`):
    - Logo centered above form
-   - Tagline updated
+   - Page titles updated in browser tab
+   - Meta descriptions updated
 
-3. **Dashboard** (`/dashboard`):
+3. **Dashboard** (`/dashboard`, `/account`):
    - Logo in nav displays correctly
-   - Avatar/accent colors use brand palette
+   - Trial banner copy updated
+   - Subscription card copy updated
 
-4. **Mobile Responsiveness**:
+4. **Subscription Gate** (when trial expired):
+   - Copy mentions "Let's Go Live" not "ZenFlow"
+
+5. **Mobile Responsiveness**:
    - Logo scales appropriately
    - Mobile menu shows logo correctly
 
-5. **Dark Mode** (if applicable):
-   - Verify logo visibility on dark backgrounds (may need light variant)
+6. **Social Cards**:
+   - OG image shows "Let's Go Live" text
+   - Twitter card shows "Let's Go Live" text
 
 ---
 
 ## Implementation Plan
 
-Since this is an easy task, the implementation can be done in a single focused step:
-
-### Step: Implementation
+Since this is an easy task with clear scope, implementation proceeds as a single step with the following order:
 
 1. Copy logo asset to public folder
 2. Create Logo component
 3. Update CSS color variables in globals.css
 4. Update fonts in layout.tsx
 5. Update metadata in layout.tsx
-6. Replace "ZenFlow" text with Logo component in:
-   - header.tsx
-   - footer.tsx
-   - nav.tsx
-   - auth layout.tsx
-7. Update copy/copyright text
-8. Run build and lint
-9. Manual verification across all pages
+6. Update auth page metadata (login, signup, reset-password, update-password)
+7. Replace "ZenFlow" text with Logo component in header, footer, nav, auth layout
+8. Update product copy in subscription-gate, trial-banner, subscription-card
+9. Update OG/Twitter image files
+10. Update footer copyright
+11. Run build and lint
+12. Manual verification across all pages
