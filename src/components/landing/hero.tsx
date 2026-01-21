@@ -15,8 +15,10 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 export function Hero() {
   const [isVisible, setIsVisible] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const [timerValue, setTimerValue] = useState(60);
+  const totalDuration = 60;
+  const [timerValue, setTimerValue] = useState(totalDuration);
   const [timerRunning, setTimerRunning] = useState(false);
+  const progressPercent = Math.min(100, Math.max(0, ((totalDuration - timerValue) / totalDuration) * 100));
 
   useEffect(() => {
     setIsVisible(true);
@@ -83,44 +85,52 @@ export function Hero() {
 
           {/* Interactive Demo Preview */}
           <div className={`transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <div className="relative bg-card/80 backdrop-blur-sm rounded-3xl border-2 border-primary/10 shadow-2xl overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-8 bg-muted/50 border-b flex items-center gap-2 px-4">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                <div className="w-3 h-3 rounded-full bg-green-500" />
-                <span className="ml-auto text-xs text-muted-foreground">Live Timer Demo</span>
-              </div>
-              
-              <div className="p-8">
-                <div className="flex items-center justify-center">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-accent/20 rounded-full blur-2xl animate-pulse" />
-                    <div className="relative bg-gradient-to-br from-primary to-primary/90 rounded-full p-8 shadow-2xl">
-                      <span className="font-mono text-5xl font-bold text-white">
-                        {Math.floor(timerValue / 60)}:{(timerValue % 60).toString().padStart(2, '0')}
-                      </span>
+            <div className="relative">
+              <div className="absolute -inset-3 rounded-[40px] bg-neutral-900/90 border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.55)]" />
+              <div className="relative rounded-[32px] border border-white/10 bg-neutral-950/95 shadow-[0_30px_90px_rgba(0,0,0,0.45)] overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/60" />
+                <div className="absolute inset-0 opacity-25 mix-blend-screen bg-[linear-gradient(transparent_85%,rgba(255,255,255,0.06)_90%)] bg-[length:100%_6px]" />
+                <div className="relative p-8 sm:p-10">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="font-semibold tracking-wide text-sky-300">Run of Show</span>
+                    <div className="flex items-center gap-2 text-white/70">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)]" />
+                      <span className="font-semibold text-white">Kind Timer</span>
+                      <span className="text-emerald-300">live</span>
                     </div>
                   </div>
+
+                  <div className="mt-10 flex flex-col items-center">
+                    <span className="font-mono text-[clamp(3.5rem,9vw,7rem)] font-semibold tracking-tight text-white drop-shadow-[0_6px_20px_rgba(0,0,0,0.6)]">
+                      {Math.floor(timerValue / 60)}:{(timerValue % 60).toString().padStart(2, '0')}
+                    </span>
+                    <span className="mt-4 text-sm sm:text-base font-semibold tracking-[0.2em] text-sky-300/80">
+                      Speaker: Ben
+                    </span>
+                  </div>
+
+                  <div className="mt-8">
+                    <div className="relative h-5 rounded-full border border-white/10 bg-neutral-800/80 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500 transition-all duration-500"
+                        style={{ width: `${Math.max(2, progressPercent)}%` }}
+                      />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-white/90 drop-shadow"
+                        style={{ left: `calc(${progressPercent}% - 6px)` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-between text-xs text-white/60">
+                    <span>Next: Sound check</span>
+                    <span>00:45 buffer</span>
+                  </div>
                 </div>
-                
-                <div className="mt-8 flex items-center justify-center gap-4">
-                  <button
-                    onClick={timerRunning ? pauseTimer : startTimer}
-                    className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white hover:bg-primary/90 transition-all hover:scale-110 active:scale-95 shadow-lg"
-                  >
-                    {timerRunning ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
-                  </button>
-                  <button
-                    onClick={resetTimer}
-                    className="flex items-center justify-center w-12 h-12 rounded-full bg-muted text-muted-foreground hover:bg-muted/80 transition-all hover:scale-110 active:scale-95"
-                  >
-                    <RotateCcw className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <p className="mt-6 text-center text-sm text-muted-foreground">
-                  Try our countdown timer - just one of the tools you&apos;ll get access to
-                </p>
+              </div>
+              <div className="mt-6 flex flex-col items-center">
+                <div className="h-14 w-20 rounded-b-3xl bg-neutral-800/80 border border-white/10 shadow-[inset_0_10px_20px_rgba(0,0,0,0.4)]" />
+                <div className="-mt-2 h-3 w-36 rounded-full bg-neutral-900/90 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.45)]" />
               </div>
             </div>
           </div>
