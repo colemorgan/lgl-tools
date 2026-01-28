@@ -1,0 +1,54 @@
+# Docker Compose for local development and testing
+# Usage: docker-compose run --rm chat-downloader single <URL>
+
+version: '3.8'
+
+services:
+  chat-downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lgl-chat-downloader
+
+    # Mount volumes for persistent output
+    volumes:
+      - ./output:/app/output
+      - ./logs:/app/logs
+
+    # Environment configuration
+    environment:
+      - LGL_CHAT_OUTPUT_DIR=/app/output
+      - LGL_CHAT_LOG_DIR=/app/logs
+      - LGL_CHAT_LOG_LEVEL=INFO
+      - LGL_CHAT_OUTPUT_FORMAT=jsonl
+      - LGL_CHAT_ENABLE_RESUME=true
+
+    # For interactive use
+    stdin_open: true
+    tty: true
+
+  # Long-running watcher service (for continuous monitoring)
+  chat-watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lgl-chat-watcher
+
+    volumes:
+      - ./output:/app/output
+      - ./logs:/app/logs
+      - ./watch-urls.txt:/app/watch-urls.txt:ro
+
+    environment:
+      - LGL_CHAT_OUTPUT_DIR=/app/output
+      - LGL_CHAT_LOG_DIR=/app/logs
+      - LGL_CHAT_LOG_LEVEL=INFO
+
+    # Run batch download from file
+    command: ["batch", "/app/watch-urls.txt", "--delay-between", "60000"]
+
+    restart: unless-stopped
+
+volumes:
+  output:
+  logs:

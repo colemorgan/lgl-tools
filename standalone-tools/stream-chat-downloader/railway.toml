@@ -1,0 +1,23 @@
+# Railway deployment configuration for LGL Stream Chat Downloader
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# This is a worker service, not a web service
+# It runs as a long-running process or one-off job
+numReplicas = 1
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Healthcheck configuration
+healthcheckPath = ""
+healthcheckTimeout = 100
+
+[deploy.resources]
+# Adjust based on expected stream volume
+# Higher volume streams may need more memory
+cpuLimit = 1
+memoryLimit = 512
