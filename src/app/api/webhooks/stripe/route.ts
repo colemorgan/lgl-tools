@@ -111,6 +111,30 @@ export async function POST(request: Request) {
             .update({ subscription_status: 'active' })
             .eq('stripe_customer_id', invoice.customer as string);
         }
+
+        const scheduledChargeId = invoice.metadata?.scheduled_charge_id;
+        if (scheduledChargeId) {
+          const paymentIntentId =
+            typeof invoice.payment_intent === 'string'
+              ? invoice.payment_intent
+              : invoice.payment_intent?.id;
+          const paidAt = invoice.status_transitions?.paid_at;
+          const processedAt = paidAt
+            ? new Date(paidAt * 1000).toISOString()
+            : new Date().toISOString();
+
+          await supabaseAdmin
+            .from('scheduled_charges')
+            .update({
+              status: 'succeeded',
+              stripe_invoice_id: invoice.id,
+              stripe_invoice_url: invoice.hosted_invoice_url ?? null,
+              stripe_invoice_pdf: invoice.invoice_pdf ?? null,
+              stripe_payment_intent_id: paymentIntentId ?? null,
+              processed_at: processedAt,
+            })
+            .eq('id', scheduledChargeId);
+        }
         break;
       }
 
@@ -158,17 +182,22 @@ export async function POST(request: Request) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const chargeId = paymentIntent.metadata?.scheduled_charge_id;
+        const invoiceId =
+          typeof paymentIntent.invoice === 'string'
+            ? paymentIntent.invoice
+            : paymentIntent.invoice?.id;
 
         if (chargeId) {
-          // Safety net: ensure charge is marked succeeded
-          // Note: Invoice-based charges are updated synchronously in cron/trigger,
-          // so this mainly catches Checkout-session-based charges (first payment).
+          // Safety net: ensure charge is marked succeeded.
+          // Invoice-based charges are updated synchronously in cron/trigger,
+          // but this also recovers if that update fails.
           await supabaseAdmin
             .from('scheduled_charges')
             .update({
               status: 'succeeded',
               stripe_payment_intent_id: paymentIntent.id,
               processed_at: new Date().toISOString(),
+              ...(invoiceId ? { stripe_invoice_id: invoiceId } : {}),
             })
             .eq('id', chargeId)
             .neq('status', 'succeeded');
