@@ -1,9 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { randomBytes } from 'crypto';
 import { requireAdmin } from '@/lib/admin';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/resend';
 import ClientInviteEmail from '../../../../../../emails/client-invite';
+
+function generateToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,10 +38,16 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (clientError) throw clientError;
+    if (clientError) {
+      console.error('Failed to create billing client:', clientError);
+      return NextResponse.json(
+        { error: `Failed to create billing client: ${clientError.message}` },
+        { status: 500 }
+      );
+    }
 
     // Generate a secure invite token
-    const token = randomBytes(32).toString('hex');
+    const token = generateToken();
 
     // Create the invite record (expires in 7 days by default)
     const { data: invite, error: inviteError } = await supabase
@@ -49,7 +60,13 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (inviteError) throw inviteError;
+    if (inviteError) {
+      console.error('Failed to create invite record:', inviteError);
+      return NextResponse.json(
+        { error: `Failed to create invite: ${inviteError.message}` },
+        { status: 500 }
+      );
+    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lgltools.com';
     const inviteUrl = `${appUrl}/invite/${token}`;
