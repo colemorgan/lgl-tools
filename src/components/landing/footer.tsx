@@ -20,15 +20,17 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-muted/30">
+    <footer className="relative border-t bg-muted/30">
+          {/* Gradient top border accent */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Logo height={28} />
             <p className="mt-4 text-sm text-muted-foreground">
-              Professional tools for creators. Enhance your workflow and create
-              better content.
+              Professional AV tools for live events. Run every show with
+              confidence.
             </p>
           </div>
 
