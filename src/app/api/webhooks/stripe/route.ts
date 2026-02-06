@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/resend';
 import PaymentFailedEmail from '../../../../../emails/payment-failed';
+import ChargeFailedEmail from '../../../../../emails/charge-failed';
 import type Stripe from 'stripe';
 
 export async function POST(request: Request) {
@@ -38,8 +39,38 @@ export async function POST(request: Request) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.supabase_user_id;
+        const billingClientId = session.metadata?.billing_client_id;
+        const scheduledChargeId = session.metadata?.scheduled_charge_id;
 
-        if (userId && session.customer) {
+        if (billingClientId && scheduledChargeId) {
+          // This is a billing client checkout — save payment method and mark charge
+          if (session.payment_intent) {
+            const paymentIntent = await stripe.paymentIntents.retrieve(
+              session.payment_intent as string
+            );
+            const paymentMethodId = paymentIntent.payment_method as string | null;
+
+            if (paymentMethodId) {
+              await supabaseAdmin
+                .from('billing_clients')
+                .update({
+                  status: 'active',
+                  stripe_payment_method_id: paymentMethodId,
+                })
+                .eq('id', billingClientId);
+            }
+          }
+
+          await supabaseAdmin
+            .from('scheduled_charges')
+            .update({
+              status: 'succeeded',
+              stripe_payment_intent_id: session.payment_intent as string,
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', scheduledChargeId);
+        } else if (userId && session.customer) {
+          // Regular subscription checkout
           await supabaseAdmin
             .from('profiles')
             .update({ stripe_customer_id: session.customer as string })
@@ -109,6 +140,77 @@ export async function POST(request: Request) {
             }
           } else {
             console.warn(`No profile found for customer ${customerId}, cannot send payment failed email`);
+          }
+        }
+        break;
+      }
+
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const chargeId = paymentIntent.metadata?.scheduled_charge_id;
+
+        if (chargeId) {
+          // Safety net: ensure charge is marked succeeded
+          await supabaseAdmin
+            .from('scheduled_charges')
+            .update({
+              status: 'succeeded',
+              stripe_payment_intent_id: paymentIntent.id,
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', chargeId)
+            .neq('status', 'succeeded');
+        }
+        break;
+      }
+
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const chargeId = paymentIntent.metadata?.scheduled_charge_id;
+        const billingUserId = paymentIntent.metadata?.supabase_user_id;
+
+        if (chargeId) {
+          const failureMessage = paymentIntent.last_payment_error?.message || 'Payment failed';
+
+          await supabaseAdmin
+            .from('scheduled_charges')
+            .update({
+              status: 'failed',
+              failure_reason: failureMessage,
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', chargeId);
+
+          // Get the charge details for the email
+          const { data: charge } = await supabaseAdmin
+            .from('scheduled_charges')
+            .select('amount_cents, currency, description')
+            .eq('id', chargeId)
+            .single();
+
+          if (billingUserId && charge) {
+            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(billingUserId);
+            const { data: profile } = await supabaseAdmin
+              .from('profiles')
+              .select('full_name')
+              .eq('id', billingUserId)
+              .single();
+
+            if (userData?.user?.email) {
+              try {
+                await sendEmail({
+                  to: userData.user.email,
+                  subject: 'A scheduled payment failed',
+                  react: ChargeFailedEmail({
+                    userName: profile?.full_name || 'there',
+                    amount: `$${(charge.amount_cents / 100).toFixed(2)} ${charge.currency.toUpperCase()}`,
+                    description: charge.description || 'Scheduled charge',
+                  }),
+                });
+              } catch (emailError) {
+                console.error('Failed to send charge failed email:', emailError);
+              }
+            }
           }
         }
         break;

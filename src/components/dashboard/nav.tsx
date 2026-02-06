@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 interface NavProps {
   userName: string | null;
   userEmail: string;
+  isAdmin?: boolean;
 }
 
 const navLinks = [
@@ -26,7 +27,7 @@ const navLinks = [
   { href: '/account', label: 'Account' },
 ];
 
-export function Nav({ userName, userEmail }: NavProps) {
+export function Nav({ userName, userEmail, isAdmin }: NavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -66,6 +67,19 @@ export function Nav({ userName, userEmail }: NavProps) {
                 {link.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={cn(
+                  'text-sm font-medium transition-colors hover:text-primary',
+                  pathname.startsWith('/admin')
+                    ? 'text-foreground'
+                    : 'text-muted-foreground'
+                )}
+              >
+                Admin
+              </Link>
+            )}
           </nav>
         </div>
 

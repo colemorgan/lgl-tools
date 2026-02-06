@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/resend';
+import { stripe } from '@/lib/stripe';
 import TrialEndingEmail from '../../../../../emails/trial-ending';
 import TrialExpiredEmail from '../../../../../emails/trial-expired';
+import ChargeFailedEmail from '../../../../../emails/charge-failed';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,6 +35,8 @@ export async function GET(request: Request) {
     trialEndingEmails: 0,
     trialExpiredEmails: 0,
     statusUpdates: 0,
+    chargesProcessed: 0,
+    chargesFailed: 0,
     errors: [] as string[],
   };
 
@@ -123,6 +127,104 @@ export async function GET(request: Request) {
             results.trialExpiredEmails++;
           } catch (emailError) {
             results.errors.push(`Error sending trial expired email to ${profile.id}: ${emailError}`);
+          }
+        }
+      }
+    }
+
+    // 3. Process scheduled charges due today or earlier
+    const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    const { data: dueCharges, error: dueChargesError } = await supabase
+      .from('scheduled_charges')
+      .select('*, billing_clients!inner(id, user_id, stripe_customer_id, stripe_payment_method_id, status)')
+      .eq('status', 'pending')
+      .lte('scheduled_date', today);
+
+    if (dueChargesError) {
+      results.errors.push(`Error fetching due charges: ${dueChargesError.message}`);
+    } else if (dueCharges && dueCharges.length > 0) {
+      for (const charge of dueCharges) {
+        const client = charge.billing_clients as unknown as {
+          id: string;
+          user_id: string;
+          stripe_customer_id: string | null;
+          stripe_payment_method_id: string | null;
+          status: string;
+        };
+
+        // Skip if client is not active or has no saved payment method
+        if (client.status !== 'active' || !client.stripe_customer_id || !client.stripe_payment_method_id) {
+          continue;
+        }
+
+        // Mark as processing
+        await supabase
+          .from('scheduled_charges')
+          .update({ status: 'processing' })
+          .eq('id', charge.id);
+
+        try {
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: charge.amount_cents,
+            currency: charge.currency,
+            customer: client.stripe_customer_id,
+            payment_method: client.stripe_payment_method_id,
+            off_session: true,
+            confirm: true,
+            metadata: {
+              billing_client_id: client.id,
+              scheduled_charge_id: charge.id,
+              supabase_user_id: client.user_id,
+            },
+          });
+
+          await supabase
+            .from('scheduled_charges')
+            .update({
+              status: 'succeeded',
+              stripe_payment_intent_id: paymentIntent.id,
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', charge.id);
+
+          results.chargesProcessed++;
+        } catch (paymentError) {
+          const errorMessage = paymentError instanceof Error ? paymentError.message : 'Payment failed';
+
+          await supabase
+            .from('scheduled_charges')
+            .update({
+              status: 'failed',
+              failure_reason: errorMessage,
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', charge.id);
+
+          results.chargesFailed++;
+
+          // Send failure email
+          const { data: userData } = await supabase.auth.admin.getUserById(client.user_id);
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', client.user_id)
+            .single();
+
+          if (userData?.user?.email) {
+            try {
+              await sendEmail({
+                to: userData.user.email,
+                subject: 'A scheduled payment failed',
+                react: ChargeFailedEmail({
+                  userName: profile?.full_name || 'there',
+                  amount: `$${(charge.amount_cents / 100).toFixed(2)} ${charge.currency.toUpperCase()}`,
+                  description: charge.description || 'Scheduled charge',
+                }),
+              });
+            } catch (emailError) {
+              results.errors.push(`Error sending charge failed email for charge ${charge.id}: ${emailError}`);
+            }
           }
         }
       }

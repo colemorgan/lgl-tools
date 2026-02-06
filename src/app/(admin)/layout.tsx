@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { getUser, getProfile } from '@/lib/supabase/server';
-import { Nav } from '@/components/dashboard/nav';
+import { isAdmin } from '@/types/database';
+import { AdminNav } from '@/components/admin/admin-nav';
 
-export default async function ProtectedLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -15,12 +16,15 @@ export default async function ProtectedLayout({
 
   const profile = await getProfile();
 
+  if (!profile || !isAdmin(profile)) {
+    redirect('/dashboard');
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Nav
-        userName={profile?.full_name ?? null}
+      <AdminNav
+        userName={profile.full_name}
         userEmail={user.email ?? ''}
-        isAdmin={profile?.role === 'admin'}
       />
       <main className="flex-1">{children}</main>
     </div>

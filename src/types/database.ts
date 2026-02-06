@@ -1,13 +1,51 @@
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired_trial';
 
+export type UserRole = 'user' | 'admin';
+
+export type BillingClientStatus = 'pending_setup' | 'active' | 'paused' | 'closed';
+
+export type ChargeStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled';
+
 export interface Profile {
   id: string;
   full_name: string | null;
   subscription_status: SubscriptionStatus;
   trial_ends_at: string;
   stripe_customer_id: string | null;
+  role: UserRole;
   created_at: string;
   updated_at: string;
+}
+
+export interface BillingClient {
+  id: string;
+  user_id: string;
+  name: string;
+  notes: string | null;
+  stripe_customer_id: string | null;
+  stripe_payment_method_id: string | null;
+  status: BillingClientStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScheduledCharge {
+  id: string;
+  billing_client_id: string;
+  amount_cents: number;
+  currency: string;
+  description: string | null;
+  scheduled_date: string;
+  status: ChargeStatus;
+  stripe_payment_intent_id: string | null;
+  failure_reason: string | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function isAdmin(profile: Profile | null): boolean {
+  return profile?.role === 'admin';
 }
 
 export function getTrialDaysRemaining(trialEndsAt: string): number {

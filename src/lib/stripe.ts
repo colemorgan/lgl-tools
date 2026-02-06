@@ -28,6 +28,12 @@ export const stripe = {
   get webhooks() {
     return getStripe().webhooks;
   },
+  get paymentIntents() {
+    return getStripe().paymentIntents;
+  },
+  get paymentMethods() {
+    return getStripe().paymentMethods;
+  },
 };
 
 export async function createOrRetrieveCustomer(
