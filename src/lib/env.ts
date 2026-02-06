@@ -24,6 +24,10 @@ interface EnvConfig {
   // Vercel Cron
   CRON_SECRET: string;
 
+  // Cloudflare Stream
+  CLOUDFLARE_ACCOUNT_ID: string;
+  CLOUDFLARE_API_TOKEN: string;
+
   // App
   NEXT_PUBLIC_APP_URL: string;
 }
@@ -38,6 +42,8 @@ const requiredEnvVars: (keyof EnvConfig)[] = [
   'STRIPE_PRICE_ID',
   'RESEND_API_KEY',
   'CRON_SECRET',
+  'CLOUDFLARE_ACCOUNT_ID',
+  'CLOUDFLARE_API_TOKEN',
   'NEXT_PUBLIC_APP_URL',
 ];
 
