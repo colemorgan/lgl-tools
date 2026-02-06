@@ -19,12 +19,23 @@ export interface Profile {
 
 export interface BillingClient {
   id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
   notes: string | null;
   stripe_customer_id: string | null;
   stripe_payment_method_id: string | null;
   status: BillingClientStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientInvite {
+  id: string;
+  billing_client_id: string;
+  token: string;
+  email: string | null;
+  expires_at: string;
+  accepted_at: string | null;
   created_at: string;
   updated_at: string;
 }

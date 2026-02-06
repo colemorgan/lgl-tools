@@ -23,7 +23,11 @@ export async function GET() {
     // Enrich with user email and pending charge count
     const enriched = await Promise.all(
       (clients ?? []).map(async (client) => {
-        const { data: userData } = await supabase.auth.admin.getUserById(client.user_id);
+        let userEmail: string | null = null;
+        if (client.user_id) {
+          const { data: userData } = await supabase.auth.admin.getUserById(client.user_id);
+          userEmail = userData?.user?.email ?? null;
+        }
         const { count } = await supabase
           .from('scheduled_charges')
           .select('*', { count: 'exact', head: true })
@@ -32,7 +36,7 @@ export async function GET() {
 
         return {
           ...client,
-          user_email: userData?.user?.email ?? null,
+          user_email: userEmail,
           pending_charges_count: count ?? 0,
         };
       })
