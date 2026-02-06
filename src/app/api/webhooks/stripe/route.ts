@@ -44,9 +44,12 @@ export async function POST(request: Request) {
 
         if (billingClientId && scheduledChargeId) {
           // This is a billing client checkout — save payment method and mark charge
+          let receiptUrl: string | null = null;
+
           if (session.payment_intent) {
             const paymentIntent = await stripe.paymentIntents.retrieve(
-              session.payment_intent as string
+              session.payment_intent as string,
+              { expand: ['latest_charge'] }
             );
             const paymentMethodId = paymentIntent.payment_method as string | null;
 
@@ -59,6 +62,12 @@ export async function POST(request: Request) {
                 })
                 .eq('id', billingClientId);
             }
+
+            // Get receipt URL from the charge for client invoice access
+            const latestCharge = paymentIntent.latest_charge;
+            if (latestCharge && typeof latestCharge === 'object' && 'receipt_url' in latestCharge) {
+              receiptUrl = (latestCharge as Stripe.Charge).receipt_url ?? null;
+            }
           }
 
           await supabaseAdmin
@@ -66,6 +75,7 @@ export async function POST(request: Request) {
             .update({
               status: 'succeeded',
               stripe_payment_intent_id: session.payment_intent as string,
+              stripe_invoice_url: receiptUrl,
               processed_at: new Date().toISOString(),
             })
             .eq('id', scheduledChargeId);

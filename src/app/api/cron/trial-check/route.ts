@@ -196,6 +196,7 @@ export async function GET(request: Request) {
               status: 'succeeded',
               stripe_invoice_id: paidInvoice.id,
               stripe_invoice_url: paidInvoice.hosted_invoice_url,
+              stripe_invoice_pdf: paidInvoice.invoice_pdf,
               processed_at: new Date().toISOString(),
             })
             .eq('id', charge.id);

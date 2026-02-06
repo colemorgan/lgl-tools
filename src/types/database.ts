@@ -40,6 +40,7 @@ export interface ScheduledCharge {
   stripe_payment_intent_id: string | null;
   stripe_invoice_id: string | null;
   stripe_invoice_url: string | null;
+  stripe_invoice_pdf: string | null;
   failure_reason: string | null;
   processed_at: string | null;
   created_at: string;

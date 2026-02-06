@@ -249,17 +249,30 @@ export function BillingView() {
                         {charge.processed_at ? formatDate(charge.processed_at) : '-'}
                       </TableCell>
                       <TableCell>
-                        {charge.stripe_invoice_url ? (
-                          <Button variant="outline" size="sm" asChild>
-                            <a
-                              href={charge.stripe_invoice_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              View Invoice
-                            </a>
-                          </Button>
-                        ) : null}
+                        <div className="flex gap-2">
+                          {charge.stripe_invoice_url && (
+                            <Button variant="outline" size="sm" asChild>
+                              <a
+                                href={charge.stripe_invoice_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {charge.stripe_invoice_id ? 'View Invoice' : 'View Receipt'}
+                              </a>
+                            </Button>
+                          )}
+                          {charge.stripe_invoice_pdf && (
+                            <Button variant="ghost" size="sm" asChild>
+                              <a
+                                href={charge.stripe_invoice_pdf}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                Download PDF
+                              </a>
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
