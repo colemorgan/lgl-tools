@@ -151,6 +151,8 @@ export async function POST(request: Request) {
 
         if (chargeId) {
           // Safety net: ensure charge is marked succeeded
+          // Note: Invoice-based charges are updated synchronously in cron/trigger,
+          // so this mainly catches Checkout-session-based charges (first payment).
           await supabaseAdmin
             .from('scheduled_charges')
             .update({

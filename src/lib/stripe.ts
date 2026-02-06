@@ -34,6 +34,12 @@ export const stripe = {
   get paymentMethods() {
     return getStripe().paymentMethods;
   },
+  get invoices() {
+    return getStripe().invoices;
+  },
+  get invoiceItems() {
+    return getStripe().invoiceItems;
+  },
 };
 
 export async function createOrRetrieveCustomer(

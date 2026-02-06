@@ -55,13 +55,19 @@ export async function POST(
       .eq('id', chargeId);
 
     try {
-      const paymentIntent = await stripe.paymentIntents.create({
+      // Create a Stripe Invoice for professional invoicing
+      await stripe.invoiceItems.create({
+        customer: client.stripe_customer_id,
         amount: charge.amount_cents,
         currency: charge.currency,
+        description: charge.description || 'Scheduled charge',
+      });
+
+      const invoice = await stripe.invoices.create({
         customer: client.stripe_customer_id,
-        payment_method: client.stripe_payment_method_id,
-        off_session: true,
-        confirm: true,
+        default_payment_method: client.stripe_payment_method_id,
+        auto_advance: true,
+        collection_method: 'charge_automatically',
         metadata: {
           billing_client_id: clientId,
           scheduled_charge_id: chargeId,
@@ -69,16 +75,25 @@ export async function POST(
         },
       });
 
+      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+      const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id, {
+        payment_method: client.stripe_payment_method_id!,
+      });
+
       await supabase
         .from('scheduled_charges')
         .update({
           status: 'succeeded',
-          stripe_payment_intent_id: paymentIntent.id,
+          stripe_invoice_id: paidInvoice.id,
+          stripe_invoice_url: paidInvoice.hosted_invoice_url,
           processed_at: new Date().toISOString(),
         })
         .eq('id', chargeId);
 
-      return NextResponse.json({ success: true, payment_intent_id: paymentIntent.id });
+      return NextResponse.json({
+        success: true,
+        invoice_id: paidInvoice.id,
+      });
     } catch (stripeError) {
       const errorMessage = stripeError instanceof Error ? stripeError.message : 'Payment failed';
 

@@ -20,6 +20,7 @@ interface NavProps {
   userName: string | null;
   userEmail: string;
   isAdmin?: boolean;
+  isBillingClient?: boolean;
 }
 
 const navLinks = [
@@ -27,7 +28,7 @@ const navLinks = [
   { href: '/account', label: 'Account' },
 ];
 
-export function Nav({ userName, userEmail, isAdmin }: NavProps) {
+export function Nav({ userName, userEmail, isAdmin, isBillingClient }: NavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -67,6 +68,19 @@ export function Nav({ userName, userEmail, isAdmin }: NavProps) {
                 {link.label}
               </Link>
             ))}
+            {isBillingClient && (
+              <Link
+                href="/billing"
+                className={cn(
+                  'text-sm font-medium transition-colors hover:text-primary',
+                  pathname === '/billing'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground'
+                )}
+              >
+                Billing
+              </Link>
+            )}
             {isAdmin && (
               <Link
                 href="/admin"
@@ -109,6 +123,11 @@ export function Nav({ userName, userEmail, isAdmin }: NavProps) {
             <DropdownMenuItem asChild className="md:hidden">
               <Link href="/account">Account</Link>
             </DropdownMenuItem>
+            {isBillingClient && (
+              <DropdownMenuItem asChild className="md:hidden">
+                <Link href="/billing">Billing</Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator className="md:hidden" />
             <DropdownMenuItem
               className="cursor-pointer text-destructive focus:text-destructive"
