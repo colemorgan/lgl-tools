@@ -26,8 +26,9 @@ export async function GET() {
 
     return NextResponse.json(streams as LiveStream[]);
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error('List streams error:', error);
-    return NextResponse.json({ error: 'Failed to fetch streams' }, { status: 500 });
+    return NextResponse.json({ error: `Failed to fetch streams: ${message}` }, { status: 500 });
   }
 }
 
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('user_id', user.id)
       .in('status', ['active', 'pending_setup'])
-      .single();
+      .maybeSingle();
 
     const billingClientId = billingClient?.id ?? null;
 
@@ -92,7 +93,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(stream as LiveStream, { status: 201 });
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Create stream error:', error);
-    return NextResponse.json({ error: 'Failed to create stream' }, { status: 500 });
+    return NextResponse.json({ error: `Failed to create stream: ${message}` }, { status: 500 });
   }
 }
