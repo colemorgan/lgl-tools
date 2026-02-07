@@ -26,7 +26,11 @@ export async function GET(
       return NextResponse.json({ error: 'Billing client not found' }, { status: 404 });
     }
 
-    const { data: userData } = await supabase.auth.admin.getUserById(client.user_id);
+    let userEmail: string | null = null;
+    if (client.user_id) {
+      const { data: userData } = await supabase.auth.admin.getUserById(client.user_id);
+      userEmail = userData?.user?.email ?? null;
+    }
 
     const { data: charges } = await supabase
       .from('scheduled_charges')
@@ -34,10 +38,19 @@ export async function GET(
       .eq('billing_client_id', clientId)
       .order('scheduled_date', { ascending: true });
 
+    const { data: invite } = await supabase
+      .from('client_invites')
+      .select('*')
+      .eq('billing_client_id', clientId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     return NextResponse.json({
       ...client,
-      user_email: userData?.user?.email ?? null,
+      user_email: userEmail,
       charges: charges ?? [],
+      invite: invite ?? null,
     });
   } catch (error) {
     console.error('Admin billing client detail error:', error);

@@ -1,4 +1,4 @@
-export type { SubscriptionStatus, UserRole, BillingClientStatus, ChargeStatus, Profile, BillingClient, ScheduledCharge } from './database';
+export type { SubscriptionStatus, UserRole, BillingClientStatus, ChargeStatus, Profile, BillingClient, ScheduledCharge, ClientInvite } from './database';
 export { hasActiveAccess, getTrialDaysRemaining, isAdmin } from './database';
 
 export interface Tool {
