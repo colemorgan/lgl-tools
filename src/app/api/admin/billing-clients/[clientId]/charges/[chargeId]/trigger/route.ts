@@ -75,39 +75,7 @@ export async function POST(
         },
       });
 
-      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
-        expand: ['payment_intent'],
-      });
-
-      const paymentIntent = finalizedInvoice.payment_intent;
-      const paymentIntentId =
-        typeof paymentIntent === 'string' ? paymentIntent : paymentIntent?.id;
-
-      if (paymentIntentId) {
-        const existingMetadata =
-          typeof paymentIntent === 'object' ? paymentIntent.metadata ?? {} : {};
-        try {
-          await stripe.paymentIntents.update(paymentIntentId, {
-            metadata: {
-              ...existingMetadata,
-              billing_client_id: clientId,
-              scheduled_charge_id: chargeId,
-              supabase_user_id: client.user_id,
-            },
-          });
-        } catch (metadataError) {
-          console.error('Failed to update payment intent metadata for scheduled charge', {
-            chargeId,
-            error: metadataError,
-          });
-        }
-      } else {
-        console.warn('Missing payment intent for invoice', {
-          invoiceId: finalizedInvoice.id,
-          chargeId,
-        });
-      }
-
+      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
       const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id, {
         payment_method: client.stripe_payment_method_id!,
       });

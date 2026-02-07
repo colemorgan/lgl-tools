@@ -112,17 +112,10 @@ export async function POST(request: Request) {
             .eq('stripe_customer_id', invoice.customer as string);
         }
 
+        // Recovery path for billing client invoice charges — if the synchronous
+        // update in cron/trigger failed, this webhook catches it using invoice metadata.
         const scheduledChargeId = invoice.metadata?.scheduled_charge_id;
         if (scheduledChargeId) {
-          const paymentIntentId =
-            typeof invoice.payment_intent === 'string'
-              ? invoice.payment_intent
-              : invoice.payment_intent?.id;
-          const paidAt = invoice.status_transitions?.paid_at;
-          const processedAt = paidAt
-            ? new Date(paidAt * 1000).toISOString()
-            : new Date().toISOString();
-
           await supabaseAdmin
             .from('scheduled_charges')
             .update({
@@ -130,10 +123,10 @@ export async function POST(request: Request) {
               stripe_invoice_id: invoice.id,
               stripe_invoice_url: invoice.hosted_invoice_url ?? null,
               stripe_invoice_pdf: invoice.invoice_pdf ?? null,
-              stripe_payment_intent_id: paymentIntentId ?? null,
-              processed_at: processedAt,
+              processed_at: new Date().toISOString(),
             })
-            .eq('id', scheduledChargeId);
+            .eq('id', scheduledChargeId)
+            .neq('status', 'succeeded');
         }
         break;
       }
@@ -182,22 +175,16 @@ export async function POST(request: Request) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const chargeId = paymentIntent.metadata?.scheduled_charge_id;
-        const invoiceId =
-          typeof paymentIntent.invoice === 'string'
-            ? paymentIntent.invoice
-            : paymentIntent.invoice?.id;
 
         if (chargeId) {
-          // Safety net: ensure charge is marked succeeded.
-          // Invoice-based charges are updated synchronously in cron/trigger,
-          // but this also recovers if that update fails.
+          // Safety net for Checkout-session-based charges (first payment).
+          // Invoice-based charges are recovered via invoice.payment_succeeded above.
           await supabaseAdmin
             .from('scheduled_charges')
             .update({
               status: 'succeeded',
               stripe_payment_intent_id: paymentIntent.id,
               processed_at: new Date().toISOString(),
-              ...(invoiceId ? { stripe_invoice_id: invoiceId } : {}),
             })
             .eq('id', chargeId)
             .neq('status', 'succeeded');
