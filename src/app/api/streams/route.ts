@@ -48,13 +48,20 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Look up billing_client_id for this user (if any)
-    const { data: billingClient } = await supabase
-      .from('billing_clients')
-      .select('id')
-      .eq('user_id', user.id)
-      .in('status', ['active', 'pending_setup'])
-      .maybeSingle();
+    // Look up billing client and user profile for naming
+    const [{ data: billingClient }, { data: profile }] = await Promise.all([
+      supabase
+        .from('billing_clients')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'pending_setup'])
+        .maybeSingle(),
+      supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single(),
+    ]);
 
     if (!billingClient) {
       return NextResponse.json(
@@ -64,18 +71,20 @@ export async function POST(request: NextRequest) {
     }
 
     const billingClientId = billingClient.id;
+    const clientName = billingClient.name.replace(/\s+/g, '-').toLowerCase();
+    const userName = (profile?.full_name ?? user.email ?? 'unknown').replace(/\s+/g, '-').toLowerCase();
 
-    // Build Cloudflare live input name: lgl_client_user_date
+    // Build Cloudflare live input name: lgl_clientName_userName_date
     const dateStr = new Date().toISOString().slice(0, 10);
-    const cfName = `lgl_${billingClientId}_${user.id}_${dateStr}`;
+    const cfName = `lgl_${clientName}_${userName}_${dateStr}`;
 
     const meta: Record<string, string> = {
       name: cfName,
       user_id: user.id,
       user_email: user.email ?? '',
+      billing_client_id: billingClientId,
       created_via: 'lgl-tools',
     };
-    meta.billing_client_id = billingClientId;
 
     const liveInput = await createLiveInput(meta, billingClientId);
 
