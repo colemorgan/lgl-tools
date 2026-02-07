@@ -123,6 +123,7 @@ export async function POST(request: Request) {
               stripe_invoice_id: invoice.id,
               stripe_invoice_url: invoice.hosted_invoice_url ?? null,
               stripe_invoice_pdf: invoice.invoice_pdf ?? null,
+              failure_reason: null,
               processed_at: new Date().toISOString(),
             })
             .eq('id', scheduledChargeId)
@@ -184,6 +185,7 @@ export async function POST(request: Request) {
             .update({
               status: 'succeeded',
               stripe_payment_intent_id: paymentIntent.id,
+              failure_reason: null,
               processed_at: new Date().toISOString(),
             })
             .eq('id', chargeId)
