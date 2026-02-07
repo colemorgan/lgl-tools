@@ -35,7 +35,6 @@ export function StreamDetails({
   onRefresh,
 }: StreamDetailsProps) {
   const [stream, setStream] = useState(initialStream);
-  const [cloudflareStatus, setCloudflareStatus] = useState<string>('unknown');
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -49,7 +48,6 @@ export function StreamDetails({
       if (res.ok) {
         const data = await res.json();
         setStream(data);
-        setCloudflareStatus(data.cloudflare_status ?? 'unknown');
       }
     } finally {
       setRefreshing(false);
@@ -58,7 +56,7 @@ export function StreamDetails({
 
   useEffect(() => {
     refreshStatus();
-    // Poll every 10 seconds for live status
+    // Poll every 10 seconds for live status updates
     const interval = setInterval(refreshStatus, 10000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -113,8 +111,12 @@ export function StreamDetails({
         </div>
       </div>
 
-      {cloudflareStatus === 'connected' && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6 text-sm text-green-800">
+      {stream.status === 'connected' && (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3 mb-6 text-sm text-green-800">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+          </span>
           Stream is live and receiving video.
         </div>
       )}

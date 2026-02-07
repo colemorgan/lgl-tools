@@ -1,36 +1,35 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { LiveStreamStatus } from '@/types/database';
+import crypto from 'crypto';
 
 /**
- * Cloudflare Stream Live webhook handler.
+ * Cloudflare Stream webhook handler
  *
- * Receives notifications from the Cloudflare Notifications system when a
- * live input connects, disconnects, or errors. Updates the corresponding
- * live_streams row status in the database.
+ * Receives live_input.connected, live_input.disconnected, and
+ * live_input.errored events and updates the live_streams table.
  *
- * Setup: In the Cloudflare dashboard → Notifications → Destinations, create
- * a webhook pointing to this route. If CLOUDFLARE_WEBHOOK_SECRET is set,
- * append ?secret=<value> to the URL so the handler can verify requests.
- *
+ * Webhook signature is verified using the shared secret from Cloudflare.
  * @see https://developers.cloudflare.com/stream/stream-live/webhooks/
  */
-
-interface CloudflareWebhookData {
-  notification_name: string;
-  input_id: string;
-  event_type: 'live_input.connected' | 'live_input.disconnected' | 'live_input.errored';
-  updated_at: string;
-  live_input_errored?: {
-    code: string;
-    message?: string;
-  };
-}
 
 interface CloudflareWebhookPayload {
   name: string;
   text: string;
-  data: CloudflareWebhookData;
+  data: {
+    notification_name: string;
+    input_id: string;
+    event_type: 'live_input.connected' | 'live_input.disconnected' | 'live_input.errored';
+    updated_at: string;
+    live_input_errored?: {
+      error: {
+        code: string;
+        message: string;
+      };
+      video_codec?: string;
+      audio_codec?: string;
+    };
+  };
   ts: number;
 }
 
@@ -40,20 +39,42 @@ const EVENT_TO_STATUS: Record<string, LiveStreamStatus> = {
   'live_input.errored': 'disconnected',
 };
 
+function verifySignature(body: string, signatureHeader: string, secret: string): boolean {
+  // Cloudflare sends: time=<timestamp>,sig1=<hmac>
+  const parts = signatureHeader.split(',');
+  const timePart = parts.find((p) => p.startsWith('time='));
+  const sigPart = parts.find((p) => p.startsWith('sig1='));
+
+  if (!timePart || !sigPart) return false;
+
+  const timestamp = timePart.slice('time='.length);
+  const signature = sigPart.slice('sig1='.length);
+
+  // The signed content is "timestamp.body"
+  const signedContent = `${timestamp}.${body}`;
+  const expected = crypto.createHmac('sha256', secret).update(signedContent).digest('hex');
+
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
+
 export async function POST(request: Request) {
-  // Verify shared secret if configured
+  const body = await request.text();
+  const signatureHeader = request.headers.get('webhook-signature');
+
   const webhookSecret = process.env.CLOUDFLARE_WEBHOOK_SECRET;
-  if (webhookSecret) {
-    const url = new URL(request.url);
-    const secret = url.searchParams.get('secret');
-    if (secret !== webhookSecret) {
-      return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
-    }
+  if (!webhookSecret) {
+    console.error('CLOUDFLARE_WEBHOOK_SECRET is not set');
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
+  if (!signatureHeader || !verifySignature(body, signatureHeader, webhookSecret)) {
+    console.error('Cloudflare webhook signature verification failed');
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
   let payload: CloudflareWebhookPayload;
   try {
-    payload = await request.json();
+    payload = JSON.parse(body);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
@@ -71,7 +92,7 @@ export async function POST(request: Request) {
 
   if (data.event_type === 'live_input.errored') {
     console.error(
-      `Cloudflare live input error: input=${data.input_id} code=${data.live_input_errored?.code ?? 'unknown'} message=${data.live_input_errored?.message ?? 'none'}`
+      `Cloudflare live input error: input=${data.input_id} code=${data.live_input_errored?.error?.code ?? 'unknown'} message=${data.live_input_errored?.error?.message ?? 'none'}`
     );
   }
 
@@ -80,7 +101,7 @@ export async function POST(request: Request) {
   try {
     const { error } = await supabaseAdmin
       .from('live_streams')
-      .update({ status: newStatus })
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('cloudflare_live_input_id', data.input_id);
 
     if (error) {
