@@ -28,6 +28,7 @@ interface EnvConfig {
   CLOUDFLARE_ACCOUNT_ID: string;
   CLOUDFLARE_API_TOKEN: string;
   CLOUDFLARE_CUSTOMER_SUBDOMAIN: string;
+  CLOUDFLARE_WEBHOOK_SECRET?: string;
 
   // App
   NEXT_PUBLIC_APP_URL: string;
