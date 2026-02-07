@@ -56,19 +56,28 @@ export async function POST(request: NextRequest) {
       .in('status', ['active', 'pending_setup'])
       .maybeSingle();
 
-    const billingClientId = billingClient?.id ?? null;
+    if (!billingClient) {
+      return NextResponse.json(
+        { error: 'A billing client must be set up before creating a live stream' },
+        { status: 403 }
+      );
+    }
 
-    // Create live input on Cloudflare with metadata for auditability
+    const billingClientId = billingClient.id;
+
+    // Build Cloudflare live input name: lgl_client_user_date
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const cfName = `lgl_${billingClientId}_${user.id}_${dateStr}`;
+
     const meta: Record<string, string> = {
+      name: cfName,
       user_id: user.id,
       user_email: user.email ?? '',
       created_via: 'lgl-tools',
     };
-    if (billingClientId) {
-      meta.billing_client_id = billingClientId;
-    }
+    meta.billing_client_id = billingClientId;
 
-    const liveInput = await createLiveInput(meta);
+    const liveInput = await createLiveInput(meta, billingClientId);
 
     const hlsPlaybackUrl = getHlsPlaybackUrl(liveInput.uid);
 

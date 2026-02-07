@@ -84,16 +84,23 @@ export interface StreamAnalyticsRow {
 
 // ── Live Input CRUD ──────────────────────────────────────────────────────
 
-export async function createLiveInput(meta: Record<string, string>): Promise<CloudflareLiveInput> {
+export async function createLiveInput(
+  meta: Record<string, string>,
+  defaultCreator?: string
+): Promise<CloudflareLiveInput> {
   const accountId = getAccountId();
+  const body: Record<string, unknown> = {
+    meta,
+    recording: { mode: 'automatic' },
+    deleteRecordingAfterDays: null,
+  };
+  if (defaultCreator) {
+    body.defaultCreator = defaultCreator;
+  }
   const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/stream/live_inputs`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({
-      meta,
-      recording: { mode: 'automatic' },
-      deleteRecordingAfterDays: null,
-    }),
+    body: JSON.stringify(body),
   });
 
   const data: CloudflareApiResponse<CloudflareLiveInput> = await res.json();

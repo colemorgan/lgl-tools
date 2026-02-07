@@ -30,6 +30,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(endDate) ||
+    isNaN(new Date(startDate + 'T00:00:00Z').getTime()) ||
+    isNaN(new Date(endDate + 'T00:00:00Z').getTime())
+  ) {
+    return NextResponse.json(
+      { error: 'start and end must be valid dates in YYYY-MM-DD format' },
+      { status: 400 }
+    );
+  }
+
   try {
     const supabase = createAdminClient();
 

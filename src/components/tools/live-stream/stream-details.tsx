@@ -67,8 +67,12 @@ export function StreamDetails({
   const handleDelete = async () => {
     if (!confirm('Delete this stream? This cannot be undone.')) return;
     setDeleting(true);
-    await onDelete(stream.id);
-    onRefresh();
+    try {
+      await onDelete(stream.id);
+      onRefresh();
+    } catch {
+      setDeleting(false);
+    }
   };
 
   const statusColor: Record<string, string> = {

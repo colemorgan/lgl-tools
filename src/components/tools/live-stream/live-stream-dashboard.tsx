@@ -49,12 +49,15 @@ export function LiveStreamDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      if (!res.ok) throw new Error('Failed to create stream');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Failed to create stream');
+      }
       const stream = await res.json();
       setStreams((prev) => [stream, ...prev]);
       setSelectedStream(stream);
-    } catch {
-      setError('Failed to create stream');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create stream');
     } finally {
       setCreating(false);
     }
