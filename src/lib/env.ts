@@ -27,6 +27,7 @@ interface EnvConfig {
   // Cloudflare Stream
   CLOUDFLARE_ACCOUNT_ID: string;
   CLOUDFLARE_API_TOKEN: string;
+  CLOUDFLARE_CUSTOMER_SUBDOMAIN: string;
 
   // App
   NEXT_PUBLIC_APP_URL: string;
@@ -44,6 +45,7 @@ const requiredEnvVars: (keyof EnvConfig)[] = [
   'CRON_SECRET',
   'CLOUDFLARE_ACCOUNT_ID',
   'CLOUDFLARE_API_TOKEN',
+  'CLOUDFLARE_CUSTOMER_SUBDOMAIN',
   'NEXT_PUBLIC_APP_URL',
 ];
 

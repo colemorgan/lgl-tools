@@ -19,6 +19,12 @@ function getApiToken(): string {
   return token;
 }
 
+function getCustomerSubdomain(): string {
+  const sub = process.env.CLOUDFLARE_CUSTOMER_SUBDOMAIN;
+  if (!sub) throw new Error('CLOUDFLARE_CUSTOMER_SUBDOMAIN is not set');
+  return sub;
+}
+
 function headers(): HeadersInit {
   return {
     Authorization: `Bearer ${getApiToken()}`,
@@ -85,7 +91,8 @@ export async function createLiveInput(meta: Record<string, string>): Promise<Clo
     headers: headers(),
     body: JSON.stringify({
       meta,
-      recording: { mode: 'off' },
+      recording: { mode: 'automatic' },
+      deleteRecordingAfterDays: null,
     }),
   });
 
@@ -132,7 +139,11 @@ export async function deleteLiveInput(liveInputId: string): Promise<void> {
 // ── Playback URLs ────────────────────────────────────────────────────────
 
 export function getHlsPlaybackUrl(liveInputId: string): string {
-  return `https://iframe.cloudflarestream.com/${liveInputId}/manifest/video.m3u8`;
+  return `https://customer-${getCustomerSubdomain()}.cloudflarestream.com/${liveInputId}/manifest/video.m3u8`;
+}
+
+export function getIframeUrl(liveInputId: string): string {
+  return `https://customer-${getCustomerSubdomain()}.cloudflarestream.com/${liveInputId}/iframe`;
 }
 
 // ── Usage Analytics (GraphQL) ────────────────────────────────────────────

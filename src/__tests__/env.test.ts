@@ -25,6 +25,7 @@ describe('Environment validation', () => {
       process.env.CRON_SECRET = 'cron-secret';
       process.env.CLOUDFLARE_ACCOUNT_ID = 'cf-account-id';
       process.env.CLOUDFLARE_API_TOKEN = 'cf-api-token';
+      process.env.CLOUDFLARE_CUSTOMER_SUBDOMAIN = 'cf-subdomain';
       process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
 
       const { validateEnv } = require('@/lib/env');
@@ -68,6 +69,7 @@ describe('Environment validation', () => {
       process.env.CRON_SECRET = 'cron-secret';
       process.env.CLOUDFLARE_ACCOUNT_ID = 'cf-account-id';
       process.env.CLOUDFLARE_API_TOKEN = 'cf-api-token';
+      process.env.CLOUDFLARE_CUSTOMER_SUBDOMAIN = 'cf-subdomain';
       process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
       delete process.env.RESEND_FROM_EMAIL;
 
@@ -124,6 +126,7 @@ describe('Environment validation', () => {
       process.env.CRON_SECRET = 'cron-secret';
       process.env.CLOUDFLARE_ACCOUNT_ID = 'cf-account-id';
       process.env.CLOUDFLARE_API_TOKEN = 'cf-api-token';
+      process.env.CLOUDFLARE_CUSTOMER_SUBDOMAIN = 'cf-subdomain';
       process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
 
       const { requireEnv } = require('@/lib/env');

@@ -4,11 +4,10 @@ import { Radio } from 'lucide-react';
 
 interface HostedPlayerProps {
   streamName: string;
-  cloudflareId: string;
+  iframeSrc: string;
 }
 
-export function HostedPlayer({ streamName, cloudflareId }: HostedPlayerProps) {
-  const iframeSrc = `https://iframe.cloudflarestream.com/${cloudflareId}?autoplay=true&muted=false`;
+export function HostedPlayer({ streamName, iframeSrc }: HostedPlayerProps) {
 
   return (
     <div className="min-h-screen bg-black flex flex-col">

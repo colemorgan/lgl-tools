@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getIframeUrl } from '@/lib/cloudflare';
 import { HostedPlayer } from './hosted-player';
 
 interface PageProps {
@@ -49,10 +50,12 @@ export default async function LivePlayerPage({ params }: PageProps) {
     );
   }
 
+  const iframeSrc = `${getIframeUrl(stream.cloudflare_live_input_id)}?autoplay=true&muted=false`;
+
   return (
     <HostedPlayer
       streamName={stream.name}
-      cloudflareId={stream.cloudflare_live_input_id}
+      iframeSrc={iframeSrc}
     />
   );
 }
