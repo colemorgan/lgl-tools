@@ -44,38 +44,62 @@ export async function GET(request: NextRequest) {
     const COST_PER_MINUTE = 0.1; // $0.001 in cents
     const BILL_PER_MINUTE = 0.2; // $0.002 in cents ($0.12/hr)
 
+    // Build list of dates in the range so each day gets its own record.
+    // This prevents overlapping queries from double-counting usage.
+    const dates: string[] = [];
+    const current = new Date(startDate + 'T00:00:00Z');
+    const end = new Date(endDate + 'T00:00:00Z');
+    while (current <= end) {
+      dates.push(current.toISOString().slice(0, 10));
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+
     const usageResults = await Promise.all(
       (streams ?? []).map(async (stream) => {
-        const minutesViewed = await getStreamMinutesViewed(
-          stream.cloudflare_live_input_id,
-          startDate,
-          endDate
-        );
+        let totalMinutes = 0;
 
-        const costDeliveryCents = Math.round(minutesViewed * COST_PER_MINUTE);
-        const billableAmountCents = Math.round(minutesViewed * BILL_PER_MINUTE);
-
-        // Upsert usage record
-        if (minutesViewed > 0) {
-          await supabase.from('stream_usage_records').upsert(
-            {
-              live_stream_id: stream.id,
-              billing_client_id: stream.billing_client_id,
-              minutes_watched: minutesViewed,
-              recorded_at: startDate,
-              cost_delivery_cents: costDeliveryCents,
-              billable_amount_cents: billableAmountCents,
-            },
-            { onConflict: 'live_stream_id,recorded_at' }
+        // Query and upsert per-day to align with the unique constraint
+        for (const date of dates) {
+          const minutesViewed = await getStreamMinutesViewed(
+            stream.cloudflare_live_input_id,
+            date,
+            date
           );
+
+          totalMinutes += minutesViewed;
+
+          if (minutesViewed > 0) {
+            const costDeliveryCents = Math.round(minutesViewed * COST_PER_MINUTE);
+            const billableAmountCents = Math.round(minutesViewed * BILL_PER_MINUTE);
+
+            const { error: upsertError } = await supabase.from('stream_usage_records').upsert(
+              {
+                live_stream_id: stream.id,
+                billing_client_id: stream.billing_client_id,
+                minutes_watched: minutesViewed,
+                recorded_at: date,
+                cost_delivery_cents: costDeliveryCents,
+                billable_amount_cents: billableAmountCents,
+              },
+              { onConflict: 'live_stream_id,recorded_at' }
+            );
+
+            if (upsertError) {
+              console.error(`Failed to upsert usage for stream ${stream.id} on ${date}:`, upsertError);
+              throw upsertError;
+            }
+          }
         }
+
+        const costDeliveryCents = Math.round(totalMinutes * COST_PER_MINUTE);
+        const billableAmountCents = Math.round(totalMinutes * BILL_PER_MINUTE);
 
         return {
           stream_id: stream.id,
           stream_name: stream.name,
           user_id: stream.user_id,
           billing_client_id: stream.billing_client_id,
-          minutes_viewed: minutesViewed,
+          minutes_viewed: totalMinutes,
           cost_delivery_cents: costDeliveryCents,
           billable_amount_cents: billableAmountCents,
         };

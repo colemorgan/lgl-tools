@@ -56,11 +56,6 @@ create policy "Service role can manage all streams"
   on public.live_streams for all
   using (auth.role() = 'service_role');
 
--- Allow public read for the hosted player page (only safe columns via API route)
-create policy "Public can read stream for player"
-  on public.live_streams for select
-  using (true);
-
 -- ── stream_usage_records ─────────────────────────────────────────────────
 
 create table if not exists public.stream_usage_records (

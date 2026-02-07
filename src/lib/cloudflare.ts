@@ -132,11 +132,7 @@ export async function deleteLiveInput(liveInputId: string): Promise<void> {
 // ── Playback URLs ────────────────────────────────────────────────────────
 
 export function getHlsPlaybackUrl(liveInputId: string): string {
-  return `https://customer-${getAccountId()}.cloudflarestream.com/${liveInputId}/manifest/video.m3u8`;
-}
-
-export function getIframePlayerUrl(liveInputId: string): string {
-  return `https://iframe.cloudflarestream.com/${liveInputId}`;
+  return `https://iframe.cloudflarestream.com/${liveInputId}/manifest/video.m3u8`;
 }
 
 // ── Usage Analytics (GraphQL) ────────────────────────────────────────────
@@ -187,7 +183,16 @@ export async function getStreamMinutesViewed(
     }),
   });
 
+  if (!res.ok) {
+    throw new Error(`Cloudflare analytics HTTP error: ${res.status} ${res.statusText}`);
+  }
+
   const data = await res.json();
+
+  if (data.errors?.length) {
+    const msg = data.errors.map((e: { message: string }) => e.message).join(', ');
+    throw new Error(`Cloudflare analytics GraphQL error: ${msg}`);
+  }
 
   const groups =
     data?.data?.viewer?.accounts?.[0]?.streamMinutesViewedAdaptiveGroups ?? [];

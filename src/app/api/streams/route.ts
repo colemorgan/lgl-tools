@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getUser } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createLiveInput } from '@/lib/cloudflare';
+import { createLiveInput, deleteLiveInput, getHlsPlaybackUrl } from '@/lib/cloudflare';
 import type { LiveStream } from '@/types';
 
 /**
@@ -70,10 +70,9 @@ export async function POST(request: NextRequest) {
 
     const liveInput = await createLiveInput(meta);
 
-    // Build HLS playback URL from the live input uid
-    const hlsPlaybackUrl = `https://iframe.cloudflarestream.com/${liveInput.uid}/manifest/video.m3u8`;
+    const hlsPlaybackUrl = getHlsPlaybackUrl(liveInput.uid);
 
-    // Persist in database
+    // Persist in database — clean up Cloudflare resource if this fails
     const { data: stream, error } = await supabase
       .from('live_streams')
       .insert({
@@ -89,7 +88,12 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      await deleteLiveInput(liveInput.uid).catch((cleanupErr) =>
+        console.error('Failed to clean up Cloudflare live input after DB error:', cleanupErr)
+      );
+      throw error;
+    }
 
     return NextResponse.json(stream as LiveStream, { status: 201 });
   } catch (error) {
