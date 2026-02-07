@@ -27,7 +27,8 @@ Run a single test: `npx jest src/__tests__/utils.test.ts`
 - `src/app/(admin)/` — Admin panel. Requires auth via middleware + admin role check in layout (`isAdmin()`). Redirects non-admins to `/dashboard`.
 - `src/app/tools/` — Tool pages. Requires auth AND active subscription. The tools layout checks `hasActiveAccess()` and renders `SubscriptionGate` if access is denied.
 - `src/app/live/[streamId]/` — Public hosted player page for live streams. Uses admin client (server-side only).
-- `src/app/api/` — `create-checkout/`, `create-portal/`, `create-billing-checkout/`, `webhooks/stripe/`, `cron/trial-check/`, `cron/cloudflare-cleanup/`, `streams/`, `live/[streamId]/`
+- `src/app/invite/[token]/` — Public invite registration page for billing client onboarding.
+- `src/app/api/` — `create-checkout/`, `create-portal/`, `create-billing-checkout/`, `webhooks/stripe/`, `cron/trial-check/`, `cron/cloudflare-cleanup/`, `streams/`, `live/[streamId]/`, `invite/[token]/`, `billing/`
 - `src/app/api/admin/` — Admin API routes (`stats/`, `users/`, `billing-clients/`, `streams/usage/`). All protected by `requireAdmin()` from `src/lib/admin.ts`.
 
 Middleware (`src/middleware.ts`) handles session refresh and route protection for all of the above.
@@ -49,17 +50,21 @@ Stripe webhooks (`src/app/api/webhooks/stripe/route.ts`) sync subscription state
 
 ### Custom Billing
 
-`billing_clients` table links a user to a custom billing arrangement. `scheduled_charges` table holds individual charges with dates and amounts. Flow: admin creates client → adds charges → generates payment link (Stripe Checkout with `setup_future_usage: 'off_session'`) → client pays first charge and card is saved → future charges auto-process via cron or manual trigger. Components in `src/components/admin/`.
+`billing_clients` table links a user to a custom billing arrangement (`user_id` is nullable for invite-based creation). `scheduled_charges` table holds individual charges with dates and amounts. `client_invites` table stores invite tokens for onboarding new clients.
+
+Two flows: (1) Admin creates client for existing user → adds charges → generates payment link. (2) Admin creates invite → billing client created without user → invite link emailed → client registers via `/invite/[token]` → user linked to billing client.
+
+Stripe Checkout with `setup_future_usage: 'off_session'` saves the card → future charges auto-process via cron or manual trigger. Components in `src/components/admin/`.
 
 ### Live Streaming (Cloudflare Stream)
 
-`live_streams` table stores stream metadata, RTMP credentials, and playback URLs. `stream_usage_records` tracks per-day minutes watched for billing. Cloudflare integration in `src/lib/cloudflare.ts` (live input CRUD, usage analytics via GraphQL). Stream creation requires an active billing client — `defaultCreator` is set to the billing client ID, and `meta.name` follows `lgl_{clientId}_{userId}_{date}`.
+`live_streams` table stores stream metadata, RTMP credentials, and playback URLs. `stream_usage_records` tracks per-day minutes watched for billing. Cloudflare integration in `src/lib/cloudflare.ts` (live input CRUD, usage analytics via GraphQL). Stream creation requires an active billing client — `defaultCreator` is set to the billing client ID, and `meta.name` follows `lgl_{clientName}_{userName}_{date}`.
 
 Playback URLs use `customer-{subdomain}.cloudflarestream.com` format. Recording mode is `automatic`. A BEFORE DELETE trigger on `live_streams` queues Cloudflare input IDs in `cloudflare_cleanup_queue` for cron-based cleanup (handles cascade deletes). Components in `src/components/tools/live-stream/`.
 
 ### Email
 
-`sendEmail()` in `src/lib/resend.ts`. React Email templates live in `emails/` (welcome, trial-ending, trial-expired, payment-failed, charge-failed).
+`sendEmail()` in `src/lib/resend.ts`. React Email templates live in `emails/` (welcome, trial-ending, trial-expired, payment-failed, charge-failed, client-invite).
 
 ### Auth
 
