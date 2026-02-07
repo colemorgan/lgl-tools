@@ -19,12 +19,23 @@ export interface Profile {
 
 export interface BillingClient {
   id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
   notes: string | null;
   stripe_customer_id: string | null;
   stripe_payment_method_id: string | null;
   status: BillingClientStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientInvite {
+  id: string;
+  billing_client_id: string;
+  token: string;
+  email: string | null;
+  expires_at: string;
+  accepted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +49,9 @@ export interface ScheduledCharge {
   scheduled_date: string;
   status: ChargeStatus;
   stripe_payment_intent_id: string | null;
+  stripe_invoice_id: string | null;
+  stripe_invoice_url: string | null;
+  stripe_invoice_pdf: string | null;
   failure_reason: string | null;
   processed_at: string | null;
   created_at: string;

@@ -14,11 +14,13 @@ import {
 } from '@/components/ui/select';
 import { ChargesTable } from './charges-table';
 import { AddChargeDialog } from './add-charge-dialog';
-import type { BillingClient, ScheduledCharge } from '@/types';
+import { Input } from '@/components/ui/input';
+import type { BillingClient, ClientInvite, ScheduledCharge } from '@/types';
 
 interface BillingClientDetail extends BillingClient {
   user_email: string | null;
   charges: ScheduledCharge[];
+  invite: ClientInvite | null;
 }
 
 export function BillingClientDetailView({ clientId }: { clientId: string }) {
@@ -130,7 +132,7 @@ export function BillingClientDetailView({ clientId }: { clientId: string }) {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="text-sm font-medium text-muted-foreground">User Email</label>
-              <p>{client.user_email || '-'}</p>
+              <p>{client.user_email || (client.user_id ? '-' : 'Pending invite')}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-muted-foreground">Status</label>
@@ -185,6 +187,61 @@ export function BillingClientDetailView({ clientId }: { clientId: string }) {
           </div>
         </CardContent>
       </Card>
+
+      {client.invite && !client.invite.accepted_at && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Invite</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Invite Link</label>
+              <div className="mt-1 flex gap-2">
+                <Input
+                  value={`${window.location.origin}/invite/${client.invite.token}`}
+                  readOnly
+                  className="font-mono text-sm"
+                />
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/invite/${client.invite!.token}`
+                    )
+                  }
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-6 text-sm text-muted-foreground">
+              {client.invite.email && <span>Restricted to: {client.invite.email}</span>}
+              <span>
+                Expires: {new Date(client.invite.expires_at).toLocaleDateString()}
+              </span>
+              {new Date(client.invite.expires_at) < new Date() && (
+                <Badge variant="destructive">Expired</Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {client.invite?.accepted_at && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Invite</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-sm">
+              <Badge variant="default">Accepted</Badge>
+              <span className="text-muted-foreground">
+                on {new Date(client.invite.accepted_at).toLocaleDateString()}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

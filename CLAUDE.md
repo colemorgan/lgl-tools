@@ -18,7 +18,7 @@ Run a single test: `npx jest src/__tests__/utils.test.ts`
 
 ## Architecture
 
-**Let's Go Live** — SaaS platform providing Timer, Prompter, and VOG tools for content creators. Next.js 14 App Router + Supabase + Stripe + Resend.
+**Let's Go Live** — SaaS platform providing Timer, Prompter, VOG, and Backup Live Stream tools for AV professionals. Next.js 14 App Router + Supabase + Stripe + Cloudflare Stream + Resend.
 
 ### Route Groups & Access Control
 
@@ -26,8 +26,9 @@ Run a single test: `npx jest src/__tests__/utils.test.ts`
 - `src/app/(protected)/` — Dashboard, account. Requires auth via middleware.
 - `src/app/(admin)/` — Admin panel. Requires auth via middleware + admin role check in layout (`isAdmin()`). Redirects non-admins to `/dashboard`.
 - `src/app/tools/` — Tool pages. Requires auth AND active subscription. The tools layout checks `hasActiveAccess()` and renders `SubscriptionGate` if access is denied.
-- `src/app/api/` — `create-checkout/`, `create-portal/`, `create-billing-checkout/`, `webhooks/stripe/`, `cron/trial-check/`
-- `src/app/api/admin/` — Admin API routes (`stats/`, `users/`, `billing-clients/`). All protected by `requireAdmin()` from `src/lib/admin.ts`.
+- `src/app/live/[streamId]/` — Public hosted player page for live streams. Uses admin client (server-side only).
+- `src/app/api/` — `create-checkout/`, `create-portal/`, `create-billing-checkout/`, `webhooks/stripe/`, `cron/trial-check/`, `cron/cloudflare-cleanup/`, `streams/`, `live/[streamId]/`
+- `src/app/api/admin/` — Admin API routes (`stats/`, `users/`, `billing-clients/`, `streams/usage/`). All protected by `requireAdmin()` from `src/lib/admin.ts`.
 
 Middleware (`src/middleware.ts`) handles session refresh and route protection for all of the above.
 
@@ -44,11 +45,17 @@ Single `profiles` table (auto-created on signup via DB trigger). Has `role` colu
 
 `hasActiveAccess()` in `src/types/database.ts` is the single source of truth for tool access — returns true for `active` or `trialing` with days remaining. `isAdmin()` checks the `role` field.
 
-Stripe webhooks (`src/app/api/webhooks/stripe/route.ts`) sync subscription state + handle billing client checkout completions and payment intent events. Daily Vercel cron at 9am UTC (`/api/cron/trial-check`) expires trials, sends emails, and processes due scheduled charges.
+Stripe webhooks (`src/app/api/webhooks/stripe/route.ts`) sync subscription state + handle billing client checkout completions and payment intent events. Vercel crons: daily at 9am UTC (`/api/cron/trial-check`) expires trials, sends emails, and processes due scheduled charges; daily at 9:30am UTC (`/api/cron/cloudflare-cleanup`) deletes orphaned Cloudflare live inputs from the cleanup queue.
 
 ### Custom Billing
 
 `billing_clients` table links a user to a custom billing arrangement. `scheduled_charges` table holds individual charges with dates and amounts. Flow: admin creates client → adds charges → generates payment link (Stripe Checkout with `setup_future_usage: 'off_session'`) → client pays first charge and card is saved → future charges auto-process via cron or manual trigger. Components in `src/components/admin/`.
+
+### Live Streaming (Cloudflare Stream)
+
+`live_streams` table stores stream metadata, RTMP credentials, and playback URLs. `stream_usage_records` tracks per-day minutes watched for billing. Cloudflare integration in `src/lib/cloudflare.ts` (live input CRUD, usage analytics via GraphQL). Stream creation requires an active billing client — `defaultCreator` is set to the billing client ID, and `meta.name` follows `lgl_{clientId}_{userId}_{date}`.
+
+Playback URLs use `customer-{subdomain}.cloudflarestream.com` format. Recording mode is `automatic`. A BEFORE DELETE trigger on `live_streams` queues Cloudflare input IDs in `cloudflare_cleanup_queue` for cron-based cleanup (handles cascade deletes). Components in `src/components/tools/live-stream/`.
 
 ### Email
 
@@ -70,4 +77,4 @@ Stripe webhooks (`src/app/api/webhooks/stripe/route.ts`) sync subscription state
 ## Environment Variables
 
 Required (validated by `src/lib/env.ts`):
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_ID`, `RESEND_API_KEY`, `CRON_SECRET`, `NEXT_PUBLIC_APP_URL`
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_ID`, `RESEND_API_KEY`, `CRON_SECRET`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_CUSTOMER_SUBDOMAIN`, `NEXT_PUBLIC_APP_URL`

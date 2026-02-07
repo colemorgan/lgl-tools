@@ -69,7 +69,11 @@ export function BillingClientsTable() {
             clients.map((client) => (
               <TableRow key={client.id}>
                 <TableCell className="font-medium">{client.name}</TableCell>
-                <TableCell>{client.user_email || '-'}</TableCell>
+                <TableCell>
+                  {client.user_email || (client.user_id ? '-' : (
+                    <span className="text-muted-foreground italic">Invited</span>
+                  ))}
+                </TableCell>
                 <TableCell>
                   <Badge variant={statusVariant[client.status]}>{client.status}</Badge>
                 </TableCell>

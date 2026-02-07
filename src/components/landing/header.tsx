@@ -45,7 +45,7 @@ export function Header() {
             <Button asChild variant="ghost" size="sm">
               <Link href="/login">Sign In</Link>
             </Button>
-            <Button asChild size="sm">
+            <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm shadow-accent/20">
               <Link href="/signup">Start Free Trial</Link>
             </Button>
           </div>
@@ -80,7 +80,7 @@ export function Header() {
                     Sign In
                   </Link>
                 </Button>
-                <Button asChild className="w-full">
+                <Button asChild className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
                   <Link href="/signup" onClick={() => setOpen(false)}>
                     Start Free Trial
                   </Link>
@@ -90,7 +90,7 @@ export function Header() {
           </Sheet>
 
           {/* Mobile: Show only trial button when menu closed */}
-          <Button asChild size="sm" className="sm:hidden">
+          <Button asChild size="sm" className="sm:hidden bg-accent text-accent-foreground hover:bg-accent/90">
             <Link href="/signup">Try Free</Link>
           </Button>
         </div>
