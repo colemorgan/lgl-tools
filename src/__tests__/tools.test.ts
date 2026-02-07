@@ -1,13 +1,14 @@
 import { tools, getToolBySlug, getToolIcon, toolIconMap } from '@/config/tools';
-import { Clock, Scroll, Volume2 } from 'lucide-react';
+import { Clock, Scroll, Volume2, Radio } from 'lucide-react';
 
 describe('tools configuration', () => {
   it('has correct number of tools', () => {
-    expect(tools).toHaveLength(3);
+    expect(tools).toHaveLength(4);
   });
 
   it('has all required tools', () => {
     const slugs = tools.map((t) => t.slug);
+    expect(slugs).toContain('live-stream');
     expect(slugs).toContain('timer');
     expect(slugs).toContain('prompter');
     expect(slugs).toContain('vog');
@@ -58,5 +59,6 @@ describe('toolIconMap', () => {
     expect(toolIconMap).toHaveProperty('Clock');
     expect(toolIconMap).toHaveProperty('Scroll');
     expect(toolIconMap).toHaveProperty('Volume2');
+    expect(toolIconMap).toHaveProperty('Radio');
   });
 });

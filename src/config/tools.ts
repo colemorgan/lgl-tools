@@ -1,10 +1,11 @@
-import { Clock, Scroll, Volume2, LucideIcon } from 'lucide-react';
+import { Clock, Scroll, Volume2, Radio, LucideIcon } from 'lucide-react';
 import type { Tool } from '@/types';
 
 export const toolIconMap: Record<string, LucideIcon> = {
   Clock,
   Scroll,
   Volume2,
+  Radio,
 };
 
 export function getToolIcon(iconName: string): LucideIcon {
@@ -12,6 +13,13 @@ export function getToolIcon(iconName: string): LucideIcon {
 }
 
 export const tools: Tool[] = [
+  {
+    slug: 'live-stream',
+    name: 'Backup Live Stream',
+    description: 'Spin up a backup live stream with RTMP ingest and a hosted player page.',
+    icon: 'Radio',
+    status: 'available',
+  },
   {
     slug: 'timer',
     name: 'Timer',

@@ -58,6 +58,33 @@ export interface ScheduledCharge {
   updated_at: string;
 }
 
+export type LiveStreamStatus = 'created' | 'connected' | 'disconnected';
+
+export interface LiveStream {
+  id: string;
+  user_id: string;
+  billing_client_id: string | null;
+  cloudflare_live_input_id: string;
+  name: string;
+  rtmp_url: string;
+  rtmp_stream_key: string;
+  hls_playback_url: string;
+  status: LiveStreamStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StreamUsageRecord {
+  id: string;
+  live_stream_id: string;
+  billing_client_id: string | null;
+  minutes_watched: number;
+  recorded_at: string;
+  cost_delivery_cents: number;
+  billable_amount_cents: number;
+  created_at: string;
+}
+
 export function isAdmin(profile: Profile | null): boolean {
   return profile?.role === 'admin';
 }
