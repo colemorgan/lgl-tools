@@ -8,6 +8,9 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Volume2,
 };
 
+// Only show public-facing tools on the landing page
+const landingTools = tools.filter((t) => t.slug !== "live-stream");
+
 const toolStyles = [
   {
     iconBg: "bg-violet-100",
@@ -45,9 +48,9 @@ export function Features() {
         </div>
 
         <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {tools.map((tool, index) => {
+          {landingTools.map((tool, index) => {
             const Icon = iconMap[tool.icon] || Clock;
-            const style = toolStyles[index];
+            const style = toolStyles[index % toolStyles.length];
             return (
               <div
                 key={tool.slug}
