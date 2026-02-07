@@ -44,9 +44,12 @@ export async function POST(request: Request) {
 
         if (billingClientId && scheduledChargeId) {
           // This is a billing client checkout — save payment method and mark charge
+          let receiptUrl: string | null = null;
+
           if (session.payment_intent) {
             const paymentIntent = await stripe.paymentIntents.retrieve(
-              session.payment_intent as string
+              session.payment_intent as string,
+              { expand: ['latest_charge'] }
             );
             const paymentMethodId = paymentIntent.payment_method as string | null;
 
@@ -59,6 +62,12 @@ export async function POST(request: Request) {
                 })
                 .eq('id', billingClientId);
             }
+
+            // Get receipt URL from the charge for client invoice access
+            const latestCharge = paymentIntent.latest_charge;
+            if (latestCharge && typeof latestCharge === 'object' && 'receipt_url' in latestCharge) {
+              receiptUrl = (latestCharge as Stripe.Charge).receipt_url ?? null;
+            }
           }
 
           await supabaseAdmin
@@ -66,6 +75,7 @@ export async function POST(request: Request) {
             .update({
               status: 'succeeded',
               stripe_payment_intent_id: session.payment_intent as string,
+              stripe_invoice_url: receiptUrl,
               processed_at: new Date().toISOString(),
             })
             .eq('id', scheduledChargeId);
@@ -100,6 +110,24 @@ export async function POST(request: Request) {
             .from('profiles')
             .update({ subscription_status: 'active' })
             .eq('stripe_customer_id', invoice.customer as string);
+        }
+
+        // Recovery path for billing client invoice charges — if the synchronous
+        // update in cron/trigger failed, this webhook catches it using invoice metadata.
+        const scheduledChargeId = invoice.metadata?.scheduled_charge_id;
+        if (scheduledChargeId) {
+          await supabaseAdmin
+            .from('scheduled_charges')
+            .update({
+              status: 'succeeded',
+              stripe_invoice_id: invoice.id,
+              stripe_invoice_url: invoice.hosted_invoice_url ?? null,
+              stripe_invoice_pdf: invoice.invoice_pdf ?? null,
+              failure_reason: null,
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', scheduledChargeId)
+            .neq('status', 'succeeded');
         }
         break;
       }
@@ -150,12 +178,14 @@ export async function POST(request: Request) {
         const chargeId = paymentIntent.metadata?.scheduled_charge_id;
 
         if (chargeId) {
-          // Safety net: ensure charge is marked succeeded
+          // Safety net for Checkout-session-based charges (first payment).
+          // Invoice-based charges are recovered via invoice.payment_succeeded above.
           await supabaseAdmin
             .from('scheduled_charges')
             .update({
               status: 'succeeded',
               stripe_payment_intent_id: paymentIntent.id,
+              failure_reason: null,
               processed_at: new Date().toISOString(),
             })
             .eq('id', chargeId)
