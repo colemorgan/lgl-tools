@@ -18,6 +18,7 @@ import {
 interface InviteData {
   company_name: string;
   email: string | null;
+  is_workspace_invite?: boolean;
 }
 
 export function InviteRegistrationForm({ token }: { token: string }) {
@@ -136,7 +137,9 @@ export function InviteRegistrationForm({ token }: { token: string }) {
       <CardHeader>
         <CardTitle>Join {inviteData?.company_name}</CardTitle>
         <CardDescription>
-          Create your account to get started.
+          {inviteData?.is_workspace_invite
+            ? 'Create your account to access your workspace tools.'
+            : 'Create your account to get started.'}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>

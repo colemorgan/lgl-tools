@@ -380,7 +380,12 @@ export function DashboardContent() {
                 Charges
               </Button>
             </Link>
-            {/* TODO: enable when workspace page is built (LGL-14) */}
+            <Link href="/admin/workspaces">
+              <Button variant="outline" size="sm">
+                <Building2 className="h-4 w-4 mr-2" />
+                Workspaces
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

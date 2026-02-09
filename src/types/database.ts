@@ -34,6 +34,8 @@ export interface ClientInvite {
   billing_client_id: string;
   token: string;
   email: string | null;
+  workspace_id: string | null;
+  workspace_role: WorkspaceMemberRole | null;
   expires_at: string;
   accepted_at: string | null;
   created_at: string;
@@ -69,6 +71,8 @@ export interface Workspace {
   name: string;
   type: WorkspaceType;
   billing_client_id: string | null;
+  stripe_customer_id: string | null;
+  stripe_payment_method_id: string | null;
   status: WorkspaceStatus;
   created_at: string;
   updated_at: string;
@@ -139,4 +143,23 @@ export function hasActiveAccess(profile: Profile | null): boolean {
   }
 
   return false;
+}
+
+/**
+ * Check if a user belongs to any active managed workspace.
+ * Uses the admin client to bypass RLS.
+ */
+export async function hasWorkspaceAccess(userId: string): Promise<boolean> {
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const supabase = createAdminClient();
+
+  const { data } = await supabase
+    .from('workspace_members')
+    .select('workspace_id, workspaces!inner(status, type)')
+    .eq('user_id', userId)
+    .eq('workspaces.status', 'active')
+    .eq('workspaces.type', 'managed')
+    .limit(1);
+
+  return (data?.length ?? 0) > 0;
 }
