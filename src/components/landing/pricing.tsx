@@ -21,7 +21,7 @@ export function Pricing() {
             <span className="text-gradient">No surprises.</span>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Every tool, every feature, one flat price. Try it free for 15 days
+            Every tool, every feature, one flat price. Try it free for 14 days
             and see the difference on your next show.
           </p>
         </div>

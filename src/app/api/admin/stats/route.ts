@@ -18,10 +18,11 @@ export async function GET() {
 
     const [
       { count: totalUsers },
-      { count: activeUsers },
-      { count: trialingUsers },
+      { count: technicianUsers },
+      { count: freeTrialUsers },
       { count: expiredTrials },
       { count: pastDueUsers },
+      { count: workspaceMembers },
       { count: totalWorkspaces },
       { count: selfServeWorkspaces },
       { count: managedWorkspaces },
@@ -40,6 +41,9 @@ export async function GET() {
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'trialing'),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'expired_trial'),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'past_due'),
+
+      // Workspace member count (distinct users)
+      supabase.from('workspace_members').select('user_id', { count: 'exact', head: true }),
 
       // Workspace counts
       supabase.from('workspaces').select('*', { count: 'exact', head: true }),
@@ -178,8 +182,9 @@ export async function GET() {
       },
       users: {
         total: totalUsers ?? 0,
-        active: activeUsers ?? 0,
-        trialing: trialingUsers ?? 0,
+        technician: technicianUsers ?? 0,
+        freeTrial: freeTrialUsers ?? 0,
+        workspaceMembers: workspaceMembers ?? 0,
         expiredTrials: expiredTrials ?? 0,
         pastDue: pastDueUsers ?? 0,
       },

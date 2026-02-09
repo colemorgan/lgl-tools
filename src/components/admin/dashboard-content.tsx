@@ -35,8 +35,9 @@ interface DashboardStats {
   };
   users: {
     total: number;
-    active: number;
-    trialing: number;
+    technician: number;
+    freeTrial: number;
+    workspaceMembers: number;
     expiredTrials: number;
     pastDue: number;
   };
@@ -193,7 +194,7 @@ export function DashboardContent() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.users.total}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.users.active} active, {stats.users.trialing} trialing
+              {stats.users.technician} Technician, {stats.users.freeTrial} Free Trial
             </p>
           </CardContent>
         </Card>
@@ -252,7 +253,7 @@ export function DashboardContent() {
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Stripe Subscriptions (MRR)</p>
+              <p className="text-sm text-muted-foreground">Technician Subscriptions ($9/mo)</p>
               <p className="text-xl font-semibold mt-1 text-muted-foreground">--</p>
               <span className="text-xs text-muted-foreground">Coming soon</span>
             </div>
