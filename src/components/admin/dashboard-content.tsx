@@ -140,7 +140,10 @@ export function DashboardContent() {
 
   useEffect(() => {
     fetch('/api/admin/stats')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(setStats)
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -208,7 +211,7 @@ export function DashboardContent() {
             <div className="text-2xl font-bold">{formatCents(totalRevenueThisMonth)}</div>
             <div className="mt-1">
               <RevenueChange
-                current={stats.revenue.customInvoicesThisMonth}
+                current={totalRevenueThisMonth}
                 previous={stats.revenue.customInvoicesLastMonth}
               />
             </div>
@@ -376,12 +379,7 @@ export function DashboardContent() {
                 Charges
               </Button>
             </Link>
-            <Link href="/admin/workspaces">
-              <Button variant="outline" size="sm">
-                <Building2 className="h-4 w-4 mr-2" />
-                Workspaces
-              </Button>
-            </Link>
+            {/* TODO: enable when workspace page is built (LGL-14) */}
           </div>
         </CardContent>
       </Card>
