@@ -30,7 +30,7 @@ export default function TrialExpiredEmail({
           <Text style={text}>Hi {userName},</Text>
 
           <Text style={text}>
-            Your 15-day free trial of LGL Tools has ended. We hope you enjoyed using
+            Your 14-day free trial of LGL Tools has ended. We hope you enjoyed using
             our tools!
           </Text>
 

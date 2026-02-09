@@ -42,7 +42,7 @@ export async function GET() {
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'expired_trial'),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'past_due'),
 
-      // Workspace member count (distinct users)
+      // Workspace member count (total memberships)
       supabase.from('workspace_members').select('user_id', { count: 'exact', head: true }),
 
       // Workspace counts
@@ -142,7 +142,7 @@ export async function GET() {
       activities.push({
         type: 'payment_succeeded',
         description: `Payment of $${((charge.amount_cents ?? 0) / 100).toFixed(2)} from ${clientName}`,
-        timestamp: charge.processed_at ?? charge.id,
+        timestamp: charge.processed_at ?? new Date().toISOString(),
         metadata: { chargeId: charge.id },
       });
     }
@@ -153,7 +153,7 @@ export async function GET() {
       activities.push({
         type: 'payment_failed',
         description: `Payment failed for ${clientName}: ${charge.failure_reason || 'Unknown reason'}`,
-        timestamp: charge.processed_at ?? charge.id,
+        timestamp: charge.processed_at ?? new Date().toISOString(),
         metadata: { chargeId: charge.id },
       });
     }

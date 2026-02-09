@@ -73,7 +73,7 @@ export function SignupForm() {
       <CardHeader>
         <CardTitle>Create an account</CardTitle>
         <CardDescription>
-          Start your 15-day free trial. No credit card required.
+          Start your 14-day free trial. No credit card required.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>

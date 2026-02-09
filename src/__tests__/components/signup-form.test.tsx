@@ -34,7 +34,7 @@ describe('SignupForm', () => {
     render(<SignupForm />);
 
     expect(screen.getByText('Create an account')).toBeInTheDocument();
-    expect(screen.getByText('Start your 15-day free trial. No credit card required.')).toBeInTheDocument();
+    expect(screen.getByText('Start your 14-day free trial. No credit card required.')).toBeInTheDocument();
     expect(screen.getByLabelText('Full name')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();

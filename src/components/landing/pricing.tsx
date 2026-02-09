@@ -34,7 +34,7 @@ export function Pricing() {
             <div className="flex items-baseline justify-between">
               <h3 className="font-heading text-2xl font-bold text-foreground">Pro</h3>
               <span className="rounded-full bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
-                15-day free trial
+                14-day free trial
               </span>
             </div>
 
