@@ -30,6 +30,7 @@ export async function GET() {
       { data: chargesThisMonth },
       { data: chargesLastMonth },
       { data: meteredUsageThisMonth },
+      { count: pendingChargesCount },
       { data: upcomingCharges },
       { data: recentSignups },
       { data: recentSucceeded },
@@ -71,6 +72,9 @@ export async function GET() {
         .from('stream_usage_records')
         .select('billable_amount_cents')
         .gte('recorded_at', startOfMonth.split('T')[0]),
+
+      // Pending charges total count
+      supabase.from('scheduled_charges').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
 
       // Upcoming charges (10 nearest pending)
       supabase
@@ -193,6 +197,7 @@ export async function GET() {
         customInvoicesLastMonth,
         meteredUsageThisMonth: meteredUsageTotal,
       },
+      pendingChargesCount: pendingChargesCount ?? 0,
       upcomingCharges: formattedUpcoming,
       recentActivity,
     });

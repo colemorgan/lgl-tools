@@ -46,6 +46,7 @@ interface DashboardStats {
     customInvoicesLastMonth: number;
     meteredUsageThisMonth: number;
   };
+  pendingChargesCount: number;
   upcomingCharges: {
     id: string;
     billing_client_id: string;
@@ -224,7 +225,7 @@ export function DashboardContent() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.upcomingCharges.length}</div>
+            <div className="text-2xl font-bold">{stats.pendingChargesCount}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {nextDueDate ? `Next due ${nextDueDate}` : 'No pending charges'}
             </p>
