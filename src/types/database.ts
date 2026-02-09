@@ -58,6 +58,38 @@ export interface ScheduledCharge {
   updated_at: string;
 }
 
+export type WorkspaceType = 'self_serve' | 'managed';
+
+export type WorkspaceStatus = 'active' | 'suspended' | 'closed';
+
+export type WorkspaceMemberRole = 'admin' | 'user';
+
+export interface Workspace {
+  id: string;
+  name: string;
+  type: WorkspaceType;
+  billing_client_id: string | null;
+  status: WorkspaceStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  role: WorkspaceMemberRole;
+  created_at: string;
+}
+
+export interface WorkspaceTool {
+  id: string;
+  workspace_id: string;
+  tool_id: string;
+  enabled: boolean;
+  created_at: string;
+}
+
 export type LiveStreamStatus = 'created' | 'connected' | 'disconnected';
 
 export interface LiveStream {

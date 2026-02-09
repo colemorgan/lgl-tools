@@ -21,7 +21,7 @@ export function Pricing() {
             <span className="text-gradient">No surprises.</span>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Every tool, every feature, one flat price. Try it free for 15 days
+            Every tool, every feature, one flat price. Try it free for 14 days
             and see the difference on your next show.
           </p>
         </div>
@@ -34,7 +34,7 @@ export function Pricing() {
             <div className="flex items-baseline justify-between">
               <h3 className="font-heading text-2xl font-bold text-foreground">Pro</h3>
               <span className="rounded-full bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
-                15-day free trial
+                14-day free trial
               </span>
             </div>
 

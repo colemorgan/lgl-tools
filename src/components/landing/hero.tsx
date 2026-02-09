@@ -61,7 +61,7 @@ export function Hero() {
             </Button>
           </div>
           <p className="animate-fade-in-up-delay-3 mt-4 text-sm text-muted-foreground">
-            15-day free trial. No credit card required.
+            14-day free trial. No credit card required.
           </p>
         </div>
 

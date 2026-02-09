@@ -25,6 +25,7 @@ const adminLinks = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/billing', label: 'Billing' },
   { href: '/admin/charges', label: 'Charges' },
+  // { href: '/admin/workspaces', label: 'Workspaces' }, // TODO: enable when page is built (LGL-14)
 ];
 
 export function AdminNav({ userName, userEmail }: AdminNavProps) {
