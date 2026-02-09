@@ -12,22 +12,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Workspace, WorkspaceStatus, WorkspaceType } from '@/types';
+import type { Workspace, WorkspaceStatus } from '@/types';
 
 interface WorkspaceWithMeta extends Workspace {
   member_count: number;
-  billing_client_name: string | null;
+  pending_charges_count: number;
 }
 
 const statusVariant: Record<WorkspaceStatus, 'default' | 'secondary' | 'destructive'> = {
   active: 'default',
   suspended: 'secondary',
   closed: 'destructive',
-};
-
-const typeLabel: Record<WorkspaceType, string> = {
-  self_serve: 'Self-Serve',
-  managed: 'Managed',
 };
 
 export function WorkspacesTable() {
@@ -48,10 +43,10 @@ export function WorkspacesTable() {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Members</TableHead>
-            <TableHead>Billing Client</TableHead>
+            <TableHead>Pending Charges</TableHead>
+            <TableHead>Payment</TableHead>
             <TableHead>Created</TableHead>
             <TableHead></TableHead>
           </TableRow>
@@ -74,15 +69,15 @@ export function WorkspacesTable() {
               <TableRow key={ws.id}>
                 <TableCell className="font-medium">{ws.name}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{typeLabel[ws.type]}</Badge>
-                </TableCell>
-                <TableCell>
                   <Badge variant={statusVariant[ws.status]}>{ws.status}</Badge>
                 </TableCell>
                 <TableCell>{ws.member_count}</TableCell>
+                <TableCell>{ws.pending_charges_count}</TableCell>
                 <TableCell>
-                  {ws.billing_client_name || (
-                    <span className="text-muted-foreground">--</span>
+                  {ws.stripe_payment_method_id ? (
+                    <Badge variant="default">Saved</Badge>
+                  ) : (
+                    <Badge variant="outline">Not saved</Badge>
                   )}
                 </TableCell>
                 <TableCell>{new Date(ws.created_at).toLocaleDateString()}</TableCell>

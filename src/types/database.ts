@@ -71,6 +71,9 @@ export interface Workspace {
   name: string;
   type: WorkspaceType;
   billing_client_id: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  notes: string | null;
   stripe_customer_id: string | null;
   stripe_payment_method_id: string | null;
   status: WorkspaceStatus;

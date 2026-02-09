@@ -22,7 +22,9 @@ import {
 } from '@/components/ui/table';
 import { ToolToggles } from './tool-toggles';
 import { InviteWorkspaceMemberDialog } from './invite-workspace-member-dialog';
-import type { Workspace, WorkspaceMember, WorkspaceTool, ClientInvite } from '@/types';
+import { ChargesTable } from './charges-table';
+import { AddChargeDialog } from './add-charge-dialog';
+import type { Workspace, WorkspaceMember, WorkspaceTool, ClientInvite, ScheduledCharge } from '@/types';
 
 interface MemberWithProfile extends WorkspaceMember {
   full_name: string | null;
@@ -30,10 +32,11 @@ interface MemberWithProfile extends WorkspaceMember {
 }
 
 interface WorkspaceDetail extends Workspace {
-  billing_client_name: string | null;
+  billing_user_email: string | null;
   members: MemberWithProfile[];
   tools: WorkspaceTool[];
   invites: ClientInvite[];
+  charges: ScheduledCharge[];
 }
 
 export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
@@ -42,6 +45,7 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [generatingLink, setGeneratingLink] = useState(false);
 
   const fetchWorkspace = useCallback(() => {
     fetch(`/api/admin/workspaces/${workspaceId}`)
@@ -91,6 +95,56 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
     setVerifying(false);
   }
 
+  async function generatePaymentLink() {
+    setGeneratingLink(true);
+    try {
+      const res = await fetch(`/api/admin/workspaces/${workspaceId}/send-payment-link`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.url) {
+        await navigator.clipboard.writeText(data.url);
+        alert('Payment link copied to clipboard!');
+      } else {
+        alert(data.error || 'Failed to generate link');
+      }
+    } catch (error) {
+      console.error('Failed to generate payment link:', error);
+    }
+    setGeneratingLink(false);
+  }
+
+  async function triggerCharge(chargeId: string) {
+    if (!confirm('Charge the client now?')) return;
+    try {
+      const res = await fetch(`/api/admin/workspaces/${workspaceId}/charges/${chargeId}/trigger`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        fetchWorkspace();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to trigger charge');
+      }
+    } catch (error) {
+      console.error('Failed to trigger charge:', error);
+    }
+  }
+
+  async function cancelCharge(chargeId: string) {
+    if (!confirm('Cancel this charge?')) return;
+    try {
+      const res = await fetch(`/api/admin/workspaces/${workspaceId}/charges/${chargeId}/cancel`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        fetchWorkspace();
+      }
+    } catch (error) {
+      console.error('Failed to cancel charge:', error);
+    }
+  }
+
   if (loading) {
     return <div className="text-muted-foreground">Loading...</div>;
   }
@@ -113,14 +167,6 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Type</label>
-              <p>
-                <Badge variant="outline">
-                  {workspace.type === 'managed' ? 'Managed' : 'Self-Serve'}
-                </Badge>
-              </p>
-            </div>
-            <div>
               <label className="text-sm font-medium text-muted-foreground">Status</label>
               <div className="mt-1">
                 <Select
@@ -140,12 +186,6 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Stripe Customer</label>
-              <p className="font-mono text-sm">
-                {workspace.stripe_customer_id || 'Not linked'}
-              </p>
-            </div>
-            <div>
               <label className="text-sm font-medium text-muted-foreground">Payment Method</label>
               <div className="flex items-center gap-2">
                 {workspace.stripe_payment_method_id ? (
@@ -153,7 +193,7 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
                 ) : (
                   <>
                     <Badge variant="outline">Not saved</Badge>
-                    {workspace.type === 'managed' && workspace.stripe_customer_id && (
+                    {workspace.stripe_customer_id && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -167,15 +207,68 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
                 )}
               </div>
             </div>
-            {workspace.billing_client_name && (
+            {workspace.billing_user_email && (
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Billing Client</label>
-                <p>{workspace.billing_client_name}</p>
+                <label className="text-sm font-medium text-muted-foreground">Billing User</label>
+                <p>{workspace.billing_user_email}</p>
+              </div>
+            )}
+            {workspace.contact_email && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Contact Email</label>
+                <p>{workspace.contact_email}</p>
+              </div>
+            )}
+            {workspace.contact_phone && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Contact Phone</label>
+                <p>{workspace.contact_phone}</p>
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Stripe Customer</label>
+              <p className="font-mono text-sm">
+                {workspace.stripe_customer_id || 'Not linked'}
+              </p>
+            </div>
+            {workspace.notes && (
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-muted-foreground">Notes</label>
+                <p className="text-sm">{workspace.notes}</p>
               </div>
             )}
           </div>
+
+          {workspace.billing_client_id && (
+            <div className="flex gap-4 pt-4">
+              <Button
+                onClick={generatePaymentLink}
+                disabled={generatingLink}
+                variant="outline"
+              >
+                {generatingLink ? 'Generating...' : 'Generate Payment Link'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Scheduled Charges */}
+      {workspace.billing_client_id && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Scheduled Charges</CardTitle>
+            <AddChargeDialog workspaceId={workspaceId} onCreated={fetchWorkspace} />
+          </CardHeader>
+          <CardContent>
+            <ChargesTable
+              charges={workspace.charges}
+              onTrigger={triggerCharge}
+              onCancel={cancelCharge}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tool Toggles */}
       <Card>

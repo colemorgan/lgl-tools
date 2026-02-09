@@ -165,17 +165,32 @@ export async function GET() {
     activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const recentActivity = activities.slice(0, 10);
 
-    // Format upcoming charges with client name
-    const formattedUpcoming = (upcomingCharges ?? []).map((c) => ({
-      id: c.id,
-      billing_client_id: c.billing_client_id,
-      billing_client_name:
-        (c.billing_clients as unknown as { name: string } | null)?.name ?? 'Unknown',
-      amount_cents: c.amount_cents,
-      currency: c.currency,
-      description: c.description,
-      scheduled_date: c.scheduled_date,
-    }));
+    // Format upcoming charges with client name + workspace info
+    const formattedUpcoming = await Promise.all(
+      (upcomingCharges ?? []).map(async (c) => {
+        const clientName =
+          (c.billing_clients as unknown as { name: string } | null)?.name ?? 'Unknown';
+
+        // Find workspace linked to this billing client
+        const { data: workspace } = await supabase
+          .from('workspaces')
+          .select('id, name')
+          .eq('billing_client_id', c.billing_client_id)
+          .maybeSingle();
+
+        return {
+          id: c.id,
+          billing_client_id: c.billing_client_id,
+          billing_client_name: clientName,
+          workspace_id: workspace?.id ?? null,
+          workspace_name: workspace?.name ?? null,
+          amount_cents: c.amount_cents,
+          currency: c.currency,
+          description: c.description,
+          scheduled_date: c.scheduled_date,
+        };
+      })
+    );
 
     return NextResponse.json({
       workspaces: {

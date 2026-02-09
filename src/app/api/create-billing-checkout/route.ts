@@ -30,15 +30,35 @@ export async function GET(request: NextRequest) {
 
     const supabaseAdmin = createAdminClient();
 
-    // Verify the user owns this billing client
-    const { data: client, error: clientError } = await supabaseAdmin
-      .from('billing_clients')
-      .select('*')
-      .eq('id', billingClientId)
+    // Verify access: check workspace membership first, then direct ownership
+    const { data: wsMembership } = await supabaseAdmin
+      .from('workspace_members')
+      .select('workspace_id, workspaces!inner(billing_client_id)')
       .eq('user_id', user.id)
-      .single();
+      .eq('workspaces.billing_client_id', billingClientId)
+      .limit(1)
+      .maybeSingle();
 
-    if (clientError || !client) {
+    let client;
+    if (wsMembership) {
+      const { data: c } = await supabaseAdmin
+        .from('billing_clients')
+        .select('*')
+        .eq('id', billingClientId)
+        .single();
+      client = c;
+    } else {
+      // Fallback: direct billing_clients.user_id ownership
+      const { data: c } = await supabaseAdmin
+        .from('billing_clients')
+        .select('*')
+        .eq('id', billingClientId)
+        .eq('user_id', user.id)
+        .single();
+      client = c;
+    }
+
+    if (!client) {
       return NextResponse.json(
         { error: 'Billing client not found or access denied' },
         { status: 404 }

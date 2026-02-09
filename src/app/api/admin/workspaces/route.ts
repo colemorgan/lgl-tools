@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
-import { tools } from '@/config/tools';
+import { tools as allTools } from '@/config/tools';
 
 export async function GET() {
   try {
@@ -21,28 +21,28 @@ export async function GET() {
 
     if (error) throw error;
 
-    // Enrich with member count and billing client name
+    // Enrich with member count and pending charges count
     const enriched = await Promise.all(
       (workspaces ?? []).map(async (workspace) => {
-        const { count } = await supabase
+        const { count: memberCount } = await supabase
           .from('workspace_members')
           .select('*', { count: 'exact', head: true })
           .eq('workspace_id', workspace.id);
 
-        let billingClientName: string | null = null;
+        let pendingChargesCount = 0;
         if (workspace.billing_client_id) {
-          const { data: client } = await supabase
-            .from('billing_clients')
-            .select('name')
-            .eq('id', workspace.billing_client_id)
-            .single();
-          billingClientName = client?.name ?? null;
+          const { count } = await supabase
+            .from('scheduled_charges')
+            .select('*', { count: 'exact', head: true })
+            .eq('billing_client_id', workspace.billing_client_id)
+            .eq('status', 'pending');
+          pendingChargesCount = count ?? 0;
         }
 
         return {
           ...workspace,
-          member_count: count ?? 0,
-          billing_client_name: billingClientName,
+          member_count: memberCount ?? 0,
+          pending_charges_count: pendingChargesCount,
         };
       })
     );
@@ -63,46 +63,60 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, type } = body;
+    const { name, contact_email, contact_phone, notes, tools: toolSelections } = body;
 
-    if (!name || !type) {
-      return NextResponse.json({ error: 'name and type are required' }, { status: 400 });
-    }
-
-    if (!['self_serve', 'managed'].includes(type)) {
-      return NextResponse.json({ error: 'type must be self_serve or managed' }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: 'name is required' }, { status: 400 });
     }
 
     const supabase = createAdminClient();
 
-    // For managed workspaces, create a Stripe Customer
-    let stripeCustomerId: string | null = null;
-    if (type === 'managed') {
-      const customer = await stripe.customers.create({
-        name,
-        metadata: { workspace: 'true' },
-      });
-      stripeCustomerId = customer.id;
-    }
+    // Admin-created workspaces are always managed — create a Stripe Customer
+    const customer = await stripe.customers.create({
+      name,
+      email: contact_email || undefined,
+      phone: contact_phone || undefined,
+      metadata: { workspace: 'true' },
+    });
 
-    // Create the workspace
+    // Create a backing billing_clients row (FK target for scheduled_charges)
+    const { data: billingClient, error: bcError } = await supabase
+      .from('billing_clients')
+      .insert({
+        name,
+        notes: notes || null,
+        stripe_customer_id: customer.id,
+        status: 'active',
+      })
+      .select()
+      .single();
+
+    if (bcError) throw bcError;
+
+    // Create the workspace linked to the billing client
     const { data: workspace, error } = await supabase
       .from('workspaces')
       .insert({
         name,
-        type,
-        stripe_customer_id: stripeCustomerId,
+        type: 'managed',
+        contact_email: contact_email || null,
+        contact_phone: contact_phone || null,
+        notes: notes || null,
+        stripe_customer_id: customer.id,
+        billing_client_id: billingClient.id,
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // Populate workspace_tools with all tools from config
-    const toolRows = tools.map((tool) => ({
+    // Populate workspace_tools — use selections from form if provided, otherwise defaults
+    const toolRows = allTools.map((tool) => ({
       workspace_id: workspace.id,
       tool_id: tool.slug,
-      enabled: tool.status === 'available',
+      enabled: toolSelections
+        ? (toolSelections[tool.slug] ?? false)
+        : tool.status === 'available',
     }));
 
     const { error: toolsError } = await supabase

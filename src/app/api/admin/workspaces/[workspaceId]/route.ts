@@ -59,15 +59,27 @@ export async function GET(
       .eq('workspace_id', workspaceId)
       .order('tool_id', { ascending: true });
 
-    // Fetch billing client name
-    let billingClientName: string | null = null;
+    // Fetch charges via billing_client_id
+    let charges: unknown[] = [];
+    let billingUserEmail: string | null = null;
     if (workspace.billing_client_id) {
-      const { data: client } = await supabase
+      const { data: chargesData } = await supabase
+        .from('scheduled_charges')
+        .select('*')
+        .eq('billing_client_id', workspace.billing_client_id)
+        .order('scheduled_date', { ascending: true });
+      charges = chargesData ?? [];
+
+      // Get billing client user email
+      const { data: billingClient } = await supabase
         .from('billing_clients')
-        .select('name')
+        .select('user_id')
         .eq('id', workspace.billing_client_id)
         .single();
-      billingClientName = client?.name ?? null;
+      if (billingClient?.user_id) {
+        const { data: userData } = await supabase.auth.admin.getUserById(billingClient.user_id);
+        billingUserEmail = userData?.user?.email ?? null;
+      }
     }
 
     // Fetch pending invites
@@ -80,7 +92,8 @@ export async function GET(
 
     return NextResponse.json({
       ...workspace,
-      billing_client_name: billingClientName,
+      charges,
+      billing_user_email: billingUserEmail,
       members: enrichedMembers ?? [],
       tools: workspaceTools ?? [],
       invites: invites ?? [],
@@ -104,12 +117,14 @@ export async function PATCH(
   try {
     const { workspaceId } = await params;
     const body = await request.json();
-    const { name, type, status } = body;
+    const { name, status, contact_email, contact_phone, notes } = body;
 
-    const updates: Record<string, string> = {};
+    const updates: Record<string, string | null> = {};
     if (name) updates.name = name;
-    if (type && ['self_serve', 'managed'].includes(type)) updates.type = type;
     if (status && ['active', 'suspended', 'closed'].includes(status)) updates.status = status;
+    if (contact_email !== undefined) updates.contact_email = contact_email || null;
+    if (contact_phone !== undefined) updates.contact_phone = contact_phone || null;
+    if (notes !== undefined) updates.notes = notes || null;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
