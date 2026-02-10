@@ -1,7 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
-    "build": { "outputs": [".next/**", "!.next/cache/**"] },
+    "build": {
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "RESEND_API_KEY",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRICE_ID",
+        "CRON_SECRET",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_CUSTOMER_SUBDOMAIN",
+        "CLOUDFLARE_WEBHOOK_SECRET"
+      ]
+    },
     "dev": { "cache": false, "persistent": true },
     "lint": {},
     "typecheck": {},
