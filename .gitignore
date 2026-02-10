@@ -45,9 +45,13 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 
+# Turborepo
+.turbo/
+
 # Cache
 .cache/
 *.log
 
 # Supabase
 .supabase/
+supabase/.temp/
