@@ -15,7 +15,7 @@ export default async function ProtectedLayout({
 
   const profile = await getProfile();
 
-  // Check if user is a workspace member (replaces billing_clients.user_id check)
+  // Check if user is a workspace member or legacy billing client
   const supabase = await createClient();
   const { data: membership } = await supabase
     .from('workspace_members')
@@ -24,7 +24,18 @@ export default async function ProtectedLayout({
     .eq('workspaces.status', 'active')
     .limit(1);
 
-  const isBillingClient = (membership?.length ?? 0) > 0;
+  let isBillingClient = (membership?.length ?? 0) > 0;
+
+  // Fallback: check legacy billing_clients.user_id for unmigrated users
+  if (!isBillingClient) {
+    const { data: directClient } = await supabase
+      .from('billing_clients')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    isBillingClient = !!directClient;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

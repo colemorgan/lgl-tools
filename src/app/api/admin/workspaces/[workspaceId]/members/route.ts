@@ -39,25 +39,40 @@ export async function POST(
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
-    // Find user by email via admin API
-    const { data: listResult, error: listError } = await supabase.auth.admin.listUsers({
-      perPage: 1000,
-    });
+    // Find user by email — paginate through all users
+    let userId: string | null = null;
+    let page = 1;
+    const perPage = 1000;
 
-    if (listError) throw listError;
+    while (!userId) {
+      const { data: listResult, error: listError } = await supabase.auth.admin.listUsers({
+        page,
+        perPage,
+      });
 
-    const matchedUser = listResult?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
+      if (listError) throw listError;
 
-    if (!matchedUser) {
+      const users = listResult?.users ?? [];
+      const matchedUser = users.find(
+        (u) => u.email?.toLowerCase() === email.toLowerCase()
+      );
+
+      if (matchedUser) {
+        userId = matchedUser.id;
+        break;
+      }
+
+      // No more pages
+      if (users.length < perPage) break;
+      page++;
+    }
+
+    if (!userId) {
       return NextResponse.json(
         { error: 'No user found with that email' },
         { status: 404 }
       );
     }
-
-    const userId = matchedUser.id;
 
     // Check if already a member
     const { data: existing } = await supabase

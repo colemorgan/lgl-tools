@@ -50,10 +50,25 @@ export async function POST(request: Request) {
             const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
             const paymentMethodId = setupIntent.payment_method as string | null;
             if (paymentMethodId) {
+              // Update workspace
               await supabaseAdmin
                 .from('workspaces')
                 .update({ stripe_payment_method_id: paymentMethodId })
                 .eq('id', workspaceId);
+
+              // Also update the linked billing_client (charge trigger reads from here)
+              const { data: ws } = await supabaseAdmin
+                .from('workspaces')
+                .select('billing_client_id')
+                .eq('id', workspaceId)
+                .single();
+
+              if (ws?.billing_client_id) {
+                await supabaseAdmin
+                  .from('billing_clients')
+                  .update({ stripe_payment_method_id: paymentMethodId })
+                  .eq('id', ws.billing_client_id);
+              }
             }
           }
         } else if (billingClientId && scheduledChargeId) {
