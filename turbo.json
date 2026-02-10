@@ -3,8 +3,12 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
       "env": [
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
         "SUPABASE_SERVICE_ROLE_KEY",
         "RESEND_API_KEY",
         "STRIPE_SECRET_KEY",
@@ -19,7 +23,7 @@
     },
     "dev": { "cache": false, "persistent": true },
     "lint": {},
-    "typecheck": {},
+    "typecheck": { "dependsOn": ["^typecheck"] },
     "test": { "cache": false }
   }
 }
