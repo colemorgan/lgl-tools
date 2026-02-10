@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { ToolToggles } from './tool-toggles';
 import { InviteWorkspaceMemberDialog } from './invite-workspace-member-dialog';
+import { AddExistingMemberDialog } from './add-existing-member-dialog';
 import { ChargesTable } from './charges-table';
 import { AddChargeDialog } from './add-charge-dialog';
 import type { Workspace, WorkspaceMember, WorkspaceTool, ClientInvite, ScheduledCharge } from '@/types';
@@ -288,10 +289,16 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Members</CardTitle>
-          <InviteWorkspaceMemberDialog
-            workspaceId={workspaceId}
-            onInvited={fetchWorkspace}
-          />
+          <div className="flex gap-2">
+            <AddExistingMemberDialog
+              workspaceId={workspaceId}
+              onAdded={fetchWorkspace}
+            />
+            <InviteWorkspaceMemberDialog
+              workspaceId={workspaceId}
+              onInvited={fetchWorkspace}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {workspace.members.length === 0 ? (
@@ -316,7 +323,7 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
                     </TableCell>
                     <TableCell>{member.email || '--'}</TableCell>
                     <TableCell>
-                      <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
+                      <Badge variant={member.role === 'owner' ? 'default' : 'secondary'}>
                         {member.role}
                       </Badge>
                     </TableCell>

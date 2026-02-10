@@ -64,7 +64,7 @@ export type WorkspaceType = 'self_serve' | 'managed';
 
 export type WorkspaceStatus = 'active' | 'suspended' | 'closed';
 
-export type WorkspaceMemberRole = 'admin' | 'user';
+export type WorkspaceMemberRole = 'owner' | 'user';
 
 export interface Workspace {
   id: string;

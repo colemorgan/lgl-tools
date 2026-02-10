@@ -25,7 +25,7 @@ export async function POST(
     const body = await request.json();
     const { email, role } = body;
 
-    const workspaceRole = role === 'admin' ? 'admin' : 'user';
+    const workspaceRole = role === 'owner' ? 'owner' : 'user';
 
     const supabase = createAdminClient();
 

@@ -32,7 +32,7 @@ export function InviteWorkspaceMemberDialog({
 }: InviteWorkspaceMemberDialogProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'user' | 'admin'>('user');
+  const [role, setRole] = useState<'user' | 'owner'>('user');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [inviteUrl, setInviteUrl] = useState('');
@@ -139,13 +139,13 @@ export function InviteWorkspaceMemberDialog({
               </div>
               <div>
                 <Label>Role</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as 'user' | 'admin')}>
+                <Select value={role} onValueChange={(v) => setRole(v as 'user' | 'owner')}>
                   <SelectTrigger className="w-full mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="owner">Owner</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
