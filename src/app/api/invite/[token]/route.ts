@@ -30,20 +30,32 @@ export async function GET(
       return NextResponse.json({ error: 'This invite has expired' }, { status: 410 });
     }
 
-    // Fetch the billing client name
-    const { data: client } = await supabase
-      .from('billing_clients')
-      .select('id, name, status')
-      .eq('id', invite.billing_client_id)
-      .single();
+    // If workspace invite, use workspace name; otherwise use billing client name
+    let companyName: string;
+    if (invite.workspace_id) {
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('id, name')
+        .eq('id', invite.workspace_id)
+        .single();
+      companyName = workspace?.name ?? 'Your Workspace';
+    } else {
+      const { data: client } = await supabase
+        .from('billing_clients')
+        .select('id, name, status')
+        .eq('id', invite.billing_client_id)
+        .single();
 
-    if (!client) {
-      return NextResponse.json({ error: 'Billing client not found' }, { status: 404 });
+      if (!client) {
+        return NextResponse.json({ error: 'Billing client not found' }, { status: 404 });
+      }
+      companyName = client.name;
     }
 
     return NextResponse.json({
-      company_name: client.name,
+      company_name: companyName,
       email: invite.email,
+      is_workspace_invite: !!invite.workspace_id,
     });
   } catch (error) {
     console.error('Invite validation error:', error);

@@ -51,6 +51,8 @@ interface DashboardStats {
     id: string;
     billing_client_id: string;
     billing_client_name: string;
+    workspace_id: string | null;
+    workspace_name: string | null;
     amount_cents: number;
     currency: string;
     description: string | null;
@@ -270,7 +272,7 @@ export function DashboardContent() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Upcoming Invoices</CardTitle>
-            <Link href="/admin/charges">
+            <Link href="/admin/billing">
               <Button variant="ghost" size="sm" className="text-xs">
                 View all
                 <ChevronRight className="h-3 w-3 ml-1" />
@@ -296,12 +298,16 @@ export function DashboardContent() {
                   {stats.upcomingCharges.map((charge) => (
                     <TableRow key={charge.id}>
                       <TableCell className="font-medium">
-                        <Link
-                          href={`/admin/billing`}
-                          className="hover:underline"
-                        >
-                          {charge.billing_client_name}
-                        </Link>
+                        {charge.workspace_id ? (
+                          <Link
+                            href={`/admin/workspaces/${charge.workspace_id}`}
+                            className="hover:underline"
+                          >
+                            {charge.workspace_name || charge.billing_client_name}
+                          </Link>
+                        ) : (
+                          charge.billing_client_name
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">
                         {charge.description || '--'}
@@ -368,19 +374,18 @@ export function DashboardContent() {
                 Users
               </Button>
             </Link>
+            <Link href="/admin/workspaces">
+              <Button variant="outline" size="sm">
+                <Building2 className="h-4 w-4 mr-2" />
+                Workspaces
+              </Button>
+            </Link>
             <Link href="/admin/billing">
               <Button variant="outline" size="sm">
                 <DollarSign className="h-4 w-4 mr-2" />
                 Billing
               </Button>
             </Link>
-            <Link href="/admin/charges">
-              <Button variant="outline" size="sm">
-                <Clock className="h-4 w-4 mr-2" />
-                Charges
-              </Button>
-            </Link>
-            {/* TODO: enable when workspace page is built (LGL-14) */}
           </div>
         </CardContent>
       </Card>

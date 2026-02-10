@@ -13,47 +13,56 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-export function InviteClientDialog({ onCreated }: { onCreated?: () => void }) {
+interface InviteWorkspaceMemberDialogProps {
+  workspaceId: string;
+  onInvited: () => void;
+}
+
+export function InviteWorkspaceMemberDialog({
+  workspaceId,
+  onInvited,
+}: InviteWorkspaceMemberDialogProps) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [notes, setNotes] = useState('');
+  const [role, setRole] = useState<'user' | 'owner'>('user');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [inviteUrl, setInviteUrl] = useState('');
 
   function reset() {
-    setName('');
     setEmail('');
-    setNotes('');
+    setRole('user');
     setError('');
     setInviteUrl('');
     setSaving(false);
   }
 
   async function handleCreate() {
-    if (!name) return;
-
     setSaving(true);
     setError('');
 
     try {
-      const res = await fetch('/api/admin/billing-clients/invite', {
+      const res = await fetch(`/api/admin/workspaces/${workspaceId}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
           email: email || undefined,
-          notes: notes || undefined,
+          role,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
         setInviteUrl(data.invite_url);
-        onCreated?.();
+        onInvited();
       } else {
         const data = await res.json();
         setError(data.error || 'Failed to create invite');
@@ -77,7 +86,9 @@ export function InviteClientDialog({ onCreated }: { onCreated?: () => void }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline">Invite Client</Button>
+        <Button variant="outline" size="sm">
+          Invite Member
+        </Button>
       </DialogTrigger>
       <DialogContent>
         {inviteUrl ? (
@@ -85,7 +96,7 @@ export function InviteClientDialog({ onCreated }: { onCreated?: () => void }) {
             <DialogHeader>
               <DialogTitle>Invite Created</DialogTitle>
               <DialogDescription>
-                Share this link with the client to complete registration.
+                Share this link with the user to join the workspace.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -98,9 +109,7 @@ export function InviteClientDialog({ onCreated }: { onCreated?: () => void }) {
                   </Button>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                This link expires in 7 days.
-              </p>
+              <p className="text-sm text-muted-foreground">This link expires in 7 days.</p>
             </div>
             <DialogFooter>
               <Button onClick={() => setOpen(false)}>Done</Button>
@@ -109,43 +118,36 @@ export function InviteClientDialog({ onCreated }: { onCreated?: () => void }) {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Invite Client</DialogTitle>
+              <DialogTitle>Invite Member</DialogTitle>
               <DialogDescription>
-                Create a billing client and generate an invite link. The client will register using
-                this link.
+                Generate an invite link for a new workspace member.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="invite-name">Company / Organization Name</Label>
-                <Input
-                  id="invite-name"
-                  placeholder="Acme Corp"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="invite-email">Contact Email (optional)</Label>
+                <Label htmlFor="invite-email">Email (optional)</Label>
                 <Input
                   id="invite-email"
                   type="email"
-                  placeholder="contact@example.com"
+                  placeholder="user@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  If provided, only this email can register via the invite.
+                  If provided, only this email can use the invite.
                 </p>
               </div>
               <div>
-                <Label htmlFor="invite-notes">Notes (optional)</Label>
-                <Textarea
-                  id="invite-notes"
-                  placeholder="Custom billing arrangement details..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
+                <Label>Role</Label>
+                <Select value={role} onValueChange={(v) => setRole(v as 'user' | 'owner')}>
+                  <SelectTrigger className="w-full mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="owner">Owner</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
@@ -153,7 +155,7 @@ export function InviteClientDialog({ onCreated }: { onCreated?: () => void }) {
               <Button variant="ghost" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={saving || !name}>
+              <Button onClick={handleCreate} disabled={saving}>
                 {saving ? 'Creating...' : 'Create Invite'}
               </Button>
             </DialogFooter>

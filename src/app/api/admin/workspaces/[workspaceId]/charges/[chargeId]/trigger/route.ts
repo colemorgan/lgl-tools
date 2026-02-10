@@ -5,7 +5,7 @@ import { stripe } from '@/lib/stripe';
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ clientId: string; chargeId: string }> }
+  { params }: { params: Promise<{ workspaceId: string; chargeId: string }> }
 ) {
   try {
     await requireAdmin();
@@ -14,14 +14,27 @@ export async function POST(
   }
 
   try {
-    const { clientId, chargeId } = await params;
+    const { workspaceId, chargeId } = await params;
     const supabase = createAdminClient();
 
-    // Get billing client
+    // Get workspace → billing_client_id
+    const { data: workspace, error: wsError } = await supabase
+      .from('workspaces')
+      .select('billing_client_id')
+      .eq('id', workspaceId)
+      .single();
+
+    if (wsError || !workspace?.billing_client_id) {
+      return NextResponse.json({ error: 'Workspace not found or has no billing client' }, { status: 404 });
+    }
+
+    const billingClientId = workspace.billing_client_id;
+
+    // Get billing client for Stripe details
     const { data: client, error: clientError } = await supabase
       .from('billing_clients')
       .select('*')
-      .eq('id', clientId)
+      .eq('id', billingClientId)
       .single();
 
     if (clientError || !client) {
@@ -37,7 +50,7 @@ export async function POST(
       .from('scheduled_charges')
       .select('*')
       .eq('id', chargeId)
-      .eq('billing_client_id', clientId)
+      .eq('billing_client_id', billingClientId)
       .single();
 
     if (chargeError || !charge) {
@@ -55,7 +68,7 @@ export async function POST(
       .eq('id', chargeId);
 
     try {
-      // Create a Stripe Invoice for professional invoicing
+      // Create a Stripe Invoice
       await stripe.invoiceItems.create({
         customer: client.stripe_customer_id,
         amount: charge.amount_cents,
@@ -69,7 +82,7 @@ export async function POST(
         auto_advance: true,
         collection_method: 'charge_automatically',
         metadata: {
-          billing_client_id: clientId,
+          billing_client_id: billingClientId,
           scheduled_charge_id: chargeId,
           supabase_user_id: client.user_id,
         },
@@ -110,7 +123,7 @@ export async function POST(
       return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
   } catch (error) {
-    console.error('Admin trigger charge error:', error);
+    console.error('Admin workspace trigger charge error:', error);
     return NextResponse.json({ error: 'Failed to trigger charge' }, { status: 500 });
   }
 }

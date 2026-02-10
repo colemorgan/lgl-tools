@@ -12,28 +12,27 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { BillingClient, BillingClientStatus } from '@/types';
+import type { Workspace, WorkspaceStatus } from '@/types';
 
-interface BillingClientWithMeta extends BillingClient {
-  user_email: string | null;
+interface WorkspaceWithMeta extends Workspace {
+  member_count: number;
   pending_charges_count: number;
 }
 
-const statusVariant: Record<BillingClientStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  pending_setup: 'outline',
+const statusVariant: Record<WorkspaceStatus, 'default' | 'secondary' | 'destructive'> = {
   active: 'default',
-  paused: 'secondary',
+  suspended: 'secondary',
   closed: 'destructive',
 };
 
-export function BillingClientsTable() {
-  const [clients, setClients] = useState<BillingClientWithMeta[]>([]);
+export function WorkspacesTable() {
+  const [workspaces, setWorkspaces] = useState<WorkspaceWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/admin/billing-clients')
+    fetch('/api/admin/workspaces')
       .then((res) => res.json())
-      .then(setClients)
+      .then(setWorkspaces)
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -44,10 +43,10 @@ export function BillingClientsTable() {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Payment Method</TableHead>
+            <TableHead>Members</TableHead>
             <TableHead>Pending Charges</TableHead>
+            <TableHead>Payment</TableHead>
             <TableHead>Created</TableHead>
             <TableHead></TableHead>
           </TableRow>
@@ -59,36 +58,32 @@ export function BillingClientsTable() {
                 Loading...
               </TableCell>
             </TableRow>
-          ) : clients.length === 0 ? (
+          ) : workspaces.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                No billing clients yet
+                No workspaces yet
               </TableCell>
             </TableRow>
           ) : (
-            clients.map((client) => (
-              <TableRow key={client.id}>
-                <TableCell className="font-medium">{client.name}</TableCell>
+            workspaces.map((ws) => (
+              <TableRow key={ws.id}>
+                <TableCell className="font-medium">{ws.name}</TableCell>
                 <TableCell>
-                  {client.user_email || (client.user_id ? '-' : (
-                    <span className="text-muted-foreground italic">Invited</span>
-                  ))}
+                  <Badge variant={statusVariant[ws.status]}>{ws.status}</Badge>
                 </TableCell>
+                <TableCell>{ws.member_count}</TableCell>
+                <TableCell>{ws.pending_charges_count}</TableCell>
                 <TableCell>
-                  <Badge variant={statusVariant[client.status]}>{client.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  {client.stripe_payment_method_id ? (
+                  {ws.stripe_payment_method_id ? (
                     <Badge variant="default">Saved</Badge>
                   ) : (
                     <Badge variant="outline">Not saved</Badge>
                   )}
                 </TableCell>
-                <TableCell>{client.pending_charges_count}</TableCell>
-                <TableCell>{new Date(client.created_at).toLocaleDateString()}</TableCell>
+                <TableCell>{new Date(ws.created_at).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/admin/billing/${client.id}`}>View</Link>
+                    <Link href={`/admin/workspaces/${ws.id}`}>View</Link>
                   </Button>
                 </TableCell>
               </TableRow>

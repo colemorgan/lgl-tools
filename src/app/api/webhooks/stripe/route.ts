@@ -41,8 +41,37 @@ export async function POST(request: Request) {
         const userId = session.metadata?.supabase_user_id;
         const billingClientId = session.metadata?.billing_client_id;
         const scheduledChargeId = session.metadata?.scheduled_charge_id;
+        const workspaceId = session.metadata?.workspace_id;
 
-        if (billingClientId && scheduledChargeId) {
+        if (session.mode === 'setup' && workspaceId) {
+          // Workspace card verification ($0 setup)
+          const setupIntentId = session.setup_intent as string | null;
+          if (setupIntentId) {
+            const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+            const paymentMethodId = setupIntent.payment_method as string | null;
+            if (paymentMethodId) {
+              // Update workspace
+              await supabaseAdmin
+                .from('workspaces')
+                .update({ stripe_payment_method_id: paymentMethodId })
+                .eq('id', workspaceId);
+
+              // Also update the linked billing_client (charge trigger reads from here)
+              const { data: ws } = await supabaseAdmin
+                .from('workspaces')
+                .select('billing_client_id')
+                .eq('id', workspaceId)
+                .single();
+
+              if (ws?.billing_client_id) {
+                await supabaseAdmin
+                  .from('billing_clients')
+                  .update({ stripe_payment_method_id: paymentMethodId })
+                  .eq('id', ws.billing_client_id);
+              }
+            }
+          }
+        } else if (billingClientId && scheduledChargeId) {
           // This is a billing client checkout — save payment method and mark charge
           let receiptUrl: string | null = null;
 

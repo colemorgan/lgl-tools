@@ -40,6 +40,9 @@ export const stripe = {
   get invoiceItems() {
     return getStripe().invoiceItems;
   },
+  get setupIntents() {
+    return getStripe().setupIntents;
+  },
 };
 
 export async function createOrRetrieveCustomer(

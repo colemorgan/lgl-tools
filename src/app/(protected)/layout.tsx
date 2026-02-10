@@ -15,13 +15,27 @@ export default async function ProtectedLayout({
 
   const profile = await getProfile();
 
-  // Check if user has a billing client record
+  // Check if user is a workspace member or legacy billing client
   const supabase = await createClient();
-  const { data: billingClient } = await supabase
-    .from('billing_clients')
-    .select('id')
+  const { data: membership } = await supabase
+    .from('workspace_members')
+    .select('workspace_id, workspaces!inner(status, type)')
     .eq('user_id', user.id)
-    .single();
+    .eq('workspaces.status', 'active')
+    .limit(1);
+
+  let isBillingClient = (membership?.length ?? 0) > 0;
+
+  // Fallback: check legacy billing_clients.user_id for unmigrated users
+  if (!isBillingClient) {
+    const { data: directClient } = await supabase
+      .from('billing_clients')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    isBillingClient = !!directClient;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -29,7 +43,7 @@ export default async function ProtectedLayout({
         userName={profile?.full_name ?? null}
         userEmail={user.email ?? ''}
         isAdmin={profile?.role === 'admin'}
-        isBillingClient={!!billingClient}
+        isBillingClient={isBillingClient}
       />
       <main className="flex-1">{children}</main>
     </div>

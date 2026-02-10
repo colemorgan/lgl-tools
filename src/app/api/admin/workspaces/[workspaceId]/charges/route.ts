@@ -2,9 +2,20 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createAdminClient } from '@/lib/supabase/admin';
 
+async function getBillingClientId(supabase: ReturnType<typeof createAdminClient>, workspaceId: string) {
+  const { data: workspace, error } = await supabase
+    .from('workspaces')
+    .select('billing_client_id')
+    .eq('id', workspaceId)
+    .single();
+
+  if (error || !workspace) return null;
+  return workspace.billing_client_id;
+}
+
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ clientId: string }> }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     await requireAdmin();
@@ -13,27 +24,32 @@ export async function GET(
   }
 
   try {
-    const { clientId } = await params;
+    const { workspaceId } = await params;
     const supabase = createAdminClient();
+
+    const billingClientId = await getBillingClientId(supabase, workspaceId);
+    if (!billingClientId) {
+      return NextResponse.json({ error: 'Workspace not found or has no billing client' }, { status: 404 });
+    }
 
     const { data: charges, error } = await supabase
       .from('scheduled_charges')
       .select('*')
-      .eq('billing_client_id', clientId)
+      .eq('billing_client_id', billingClientId)
       .order('scheduled_date', { ascending: true });
 
     if (error) throw error;
 
     return NextResponse.json(charges ?? []);
   } catch (error) {
-    console.error('Admin charges list error:', error);
+    console.error('Admin workspace charges list error:', error);
     return NextResponse.json({ error: 'Failed to fetch charges' }, { status: 500 });
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ clientId: string }> }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     await requireAdmin();
@@ -42,7 +58,7 @@ export async function POST(
   }
 
   try {
-    const { clientId } = await params;
+    const { workspaceId } = await params;
     const body = await request.json();
     const { amount_cents, description, scheduled_date, currency } = body;
 
@@ -52,21 +68,15 @@ export async function POST(
 
     const supabase = createAdminClient();
 
-    // Verify client exists
-    const { data: client, error: clientError } = await supabase
-      .from('billing_clients')
-      .select('id')
-      .eq('id', clientId)
-      .single();
-
-    if (clientError || !client) {
-      return NextResponse.json({ error: 'Billing client not found' }, { status: 404 });
+    const billingClientId = await getBillingClientId(supabase, workspaceId);
+    if (!billingClientId) {
+      return NextResponse.json({ error: 'Workspace not found or has no billing client' }, { status: 404 });
     }
 
     const { data: charge, error } = await supabase
       .from('scheduled_charges')
       .insert({
-        billing_client_id: clientId,
+        billing_client_id: billingClientId,
         amount_cents,
         description: description || null,
         scheduled_date,
@@ -80,7 +90,7 @@ export async function POST(
 
     return NextResponse.json(charge, { status: 201 });
   } catch (error) {
-    console.error('Admin create charge error:', error);
+    console.error('Admin workspace create charge error:', error);
     return NextResponse.json({ error: 'Failed to create charge' }, { status: 500 });
   }
 }

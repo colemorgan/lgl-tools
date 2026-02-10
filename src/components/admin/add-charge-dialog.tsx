@@ -14,11 +14,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 interface AddChargeDialogProps {
-  clientId: string;
+  workspaceId: string;
   onCreated: () => void;
 }
 
-export function AddChargeDialog({ clientId, onCreated }: AddChargeDialogProps) {
+export function AddChargeDialog({ workspaceId, onCreated }: AddChargeDialogProps) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -30,7 +30,7 @@ export function AddChargeDialog({ clientId, onCreated }: AddChargeDialogProps) {
 
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/billing-clients/${clientId}/charges`, {
+      const res = await fetch(`/api/admin/workspaces/${workspaceId}/charges`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

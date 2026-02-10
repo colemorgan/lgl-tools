@@ -48,8 +48,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Look up billing client and user profile for naming
-    const [{ data: billingClient }, { data: profile }] = await Promise.all([
+    // Look up billing client via workspace membership first, then fallback to direct
+    const [{ data: membership }, { data: directClient }, { data: profile }] = await Promise.all([
+      supabase
+        .from('workspace_members')
+        .select('workspace_id, workspaces!inner(billing_client_id, name)')
+        .eq('user_id', user.id)
+        .eq('workspaces.status', 'active')
+        .limit(1)
+        .maybeSingle(),
       supabase
         .from('billing_clients')
         .select('id, name')
@@ -63,15 +70,18 @@ export async function POST(request: NextRequest) {
         .single(),
     ]);
 
-    if (!billingClient) {
+    const wsData = membership?.workspaces as unknown as { billing_client_id: string | null; name: string } | null;
+    const billingClientId = wsData?.billing_client_id ?? directClient?.id ?? null;
+    const clientNameRaw = wsData?.name ?? directClient?.name ?? null;
+
+    if (!billingClientId || !clientNameRaw) {
       return NextResponse.json(
         { error: 'A billing client must be set up before creating a live stream' },
         { status: 403 }
       );
     }
 
-    const billingClientId = billingClient.id;
-    const clientName = billingClient.name.replace(/\s+/g, '-').toLowerCase();
+    const clientName = clientNameRaw.replace(/\s+/g, '-').toLowerCase();
     const userName = (profile?.full_name ?? user.email ?? 'unknown').replace(/\s+/g, '-').toLowerCase();
 
     // Build Cloudflare live input name: lgl_clientName_userName_date

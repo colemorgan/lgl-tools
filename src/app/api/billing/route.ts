@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { BillingClient, ScheduledCharge } from '@/types';
 
 export async function GET() {
@@ -10,22 +11,51 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Check if user has a billing client record
-  const { data: billingClient, error: clientError } = await supabase
+  const supabaseAdmin = createAdminClient();
+
+  // Try workspace membership first: workspace → billing_client_id → charges
+  const { data: membership } = await supabaseAdmin
+    .from('workspace_members')
+    .select('workspace_id, workspaces!inner(billing_client_id)')
+    .eq('user_id', user.id)
+    .eq('workspaces.status', 'active')
+    .limit(1)
+    .maybeSingle();
+
+  const billingClientId =
+    (membership?.workspaces as unknown as { billing_client_id: string | null })?.billing_client_id ?? null;
+
+  // Fall back to direct billing_clients.user_id lookup
+  let resolvedBillingClientId = billingClientId;
+  if (!resolvedBillingClientId) {
+    const { data: directClient } = await supabaseAdmin
+      .from('billing_clients')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    resolvedBillingClientId = directClient?.id ?? null;
+  }
+
+  if (!resolvedBillingClientId) {
+    return NextResponse.json({ billing_client: null, charges: [] });
+  }
+
+  // Fetch billing client
+  const { data: billingClient } = await supabaseAdmin
     .from('billing_clients')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('id', resolvedBillingClientId)
     .single();
 
-  if (clientError || !billingClient) {
+  if (!billingClient) {
     return NextResponse.json({ billing_client: null, charges: [] });
   }
 
   // Fetch all charges for this billing client
-  const { data: charges, error: chargesError } = await supabase
+  const { data: charges, error: chargesError } = await supabaseAdmin
     .from('scheduled_charges')
     .select('*')
-    .eq('billing_client_id', billingClient.id)
+    .eq('billing_client_id', resolvedBillingClientId)
     .order('scheduled_date', { ascending: false });
 
   if (chargesError) {

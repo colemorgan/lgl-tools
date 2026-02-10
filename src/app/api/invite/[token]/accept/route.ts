@@ -73,16 +73,49 @@ export async function POST(
 
     const userId = authData.user.id;
 
-    // Link the user to the billing client
-    const { error: updateClientError } = await supabase
+    // Link the user to the billing client (only if no other user is linked)
+    const { data: existingClient } = await supabase
       .from('billing_clients')
-      .update({
-        user_id: userId,
-        status: 'active',
-      })
-      .eq('id', invite.billing_client_id);
+      .select('user_id')
+      .eq('id', invite.billing_client_id)
+      .single();
 
-    if (updateClientError) throw updateClientError;
+    if (!existingClient?.user_id) {
+      const { error: updateClientError } = await supabase
+        .from('billing_clients')
+        .update({
+          user_id: userId,
+          status: 'active',
+        })
+        .eq('id', invite.billing_client_id);
+
+      if (updateClientError) throw updateClientError;
+    }
+
+    // If this is a workspace invite, add user to workspace and set active status
+    if (invite.workspace_id) {
+      const { error: memberError } = await supabase
+        .from('workspace_members')
+        .insert({
+          workspace_id: invite.workspace_id,
+          user_id: userId,
+          role: invite.workspace_role || 'user',
+        });
+
+      if (memberError) {
+        console.error('Failed to add workspace member:', memberError);
+      }
+
+      // Managed workspace users get active status (skip trial/subscription)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ subscription_status: 'active' })
+        .eq('id', userId);
+
+      if (profileError) {
+        console.error('Failed to update profile status:', profileError);
+      }
+    }
 
     // Mark the invite as accepted
     const { error: acceptError } = await supabase

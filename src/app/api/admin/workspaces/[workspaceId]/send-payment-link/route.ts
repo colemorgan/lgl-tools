@@ -5,7 +5,7 @@ import { stripe } from '@/lib/stripe';
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ clientId: string }> }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     await requireAdmin();
@@ -14,14 +14,25 @@ export async function POST(
   }
 
   try {
-    const { clientId } = await params;
+    const { workspaceId } = await params;
     const supabase = createAdminClient();
+
+    // Get workspace → billing_client_id
+    const { data: workspace, error: wsError } = await supabase
+      .from('workspaces')
+      .select('billing_client_id')
+      .eq('id', workspaceId)
+      .single();
+
+    if (wsError || !workspace?.billing_client_id) {
+      return NextResponse.json({ error: 'Workspace not found or has no billing client' }, { status: 404 });
+    }
 
     // Get billing client
     const { data: client, error: clientError } = await supabase
       .from('billing_clients')
       .select('*')
-      .eq('id', clientId)
+      .eq('id', workspace.billing_client_id)
       .single();
 
     if (clientError || !client) {
@@ -36,7 +47,7 @@ export async function POST(
     const { data: charge, error: chargeError } = await supabase
       .from('scheduled_charges')
       .select('*')
-      .eq('billing_client_id', clientId)
+      .eq('billing_client_id', workspace.billing_client_id)
       .eq('status', 'pending')
       .order('scheduled_date', { ascending: true })
       .limit(1)
@@ -66,13 +77,13 @@ export async function POST(
       payment_intent_data: {
         setup_future_usage: 'off_session',
         metadata: {
-          billing_client_id: clientId,
+          billing_client_id: workspace.billing_client_id,
           scheduled_charge_id: charge.id,
           supabase_user_id: client.user_id,
         },
       },
       metadata: {
-        billing_client_id: clientId,
+        billing_client_id: workspace.billing_client_id,
         scheduled_charge_id: charge.id,
         supabase_user_id: client.user_id,
       },
@@ -82,7 +93,7 @@ export async function POST(
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error('Admin send payment link error:', error);
+    console.error('Admin workspace send payment link error:', error);
     return NextResponse.json({ error: 'Failed to create payment link' }, { status: 500 });
   }
 }

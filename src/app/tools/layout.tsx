@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getUser, getProfile } from '@/lib/supabase/server';
-import { hasActiveAccess } from '@/types';
+import { hasActiveAccess, hasWorkspaceAccess } from '@/types';
 import { SubscriptionGate } from '@/components/tools/subscription-gate';
 import { ToolHeader } from '@/components/tools/tool-header';
 
@@ -24,7 +24,11 @@ export default async function ToolsLayout({
   const accessGranted = hasActiveAccess(profile);
 
   if (!accessGranted) {
-    return <SubscriptionGate profile={profile} />;
+    // Check if user belongs to an active managed workspace
+    const workspaceAccess = await hasWorkspaceAccess(user.id);
+    if (!workspaceAccess) {
+      return <SubscriptionGate profile={profile} />;
+    }
   }
 
   return (
