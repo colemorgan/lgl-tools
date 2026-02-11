@@ -103,6 +103,22 @@ export async function DELETE(request: NextRequest) {
 
   const supabaseAdmin = createAdminClient();
 
+  // Verify the target member exists and is not an owner
+  const { data: targetMember } = await supabaseAdmin
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!targetMember) {
+    return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+  }
+
+  if (targetMember.role === 'owner') {
+    return NextResponse.json({ error: 'Cannot remove a workspace owner' }, { status: 403 });
+  }
+
   const { error: deleteError } = await supabaseAdmin
     .from('workspace_members')
     .delete()
