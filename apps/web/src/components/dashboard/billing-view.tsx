@@ -50,6 +50,7 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchBilling() {
@@ -69,6 +70,7 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
 
   async function handleUpdatePaymentMethod() {
     setUpdatingPayment(true);
+    setPaymentError(null);
     try {
       const res = await fetch('/api/workspace/update-payment-method', {
         method: 'POST',
@@ -77,10 +79,10 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
       if (json.url) {
         window.location.href = json.url;
       } else {
-        setError(json.error || 'Failed to create setup session');
+        setPaymentError(json.error || 'Failed to create setup session');
       }
     } catch {
-      setError('Failed to update payment method');
+      setPaymentError('Failed to update payment method');
     }
     setUpdatingPayment(false);
   }
@@ -114,7 +116,10 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
               Add a payment method to get started with billing for your workspace.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {paymentError && (
+              <p className="text-sm text-destructive">{paymentError}</p>
+            )}
             <Button
               onClick={handleUpdatePaymentMethod}
               disabled={updatingPayment}
@@ -211,7 +216,7 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
             <CardTitle>Payment Method</CardTitle>
             <CardDescription>Card on file for scheduled charges</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {data.billing_client.stripe_payment_method_id ? (
@@ -233,6 +238,9 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
                     : 'Add Card'}
               </Button>
             </div>
+            {paymentError && (
+              <p className="text-sm text-destructive">{paymentError}</p>
+            )}
           </CardContent>
         </Card>
       )}

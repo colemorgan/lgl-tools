@@ -8,8 +8,13 @@ const protectedRoutes = ['/dashboard', '/account', '/tools', '/update-password',
 const authRoutes = ['/login', '/signup', '/reset-password'];
 
 export async function middleware(request: NextRequest) {
-  const { user, supabaseResponse } = await updateSession(request);
   const { pathname } = request.nextUrl;
+
+  // Forward pathname to server components via request header
+  // (must be set before updateSession so NextResponse.next({ request }) includes it)
+  request.headers.set('x-next-pathname', pathname);
+
+  const { user, supabaseResponse } = await updateSession(request);
 
   // Check if the route is protected
   const isProtectedRoute = protectedRoutes.some(route =>
@@ -32,9 +37,6 @@ export async function middleware(request: NextRequest) {
   if (isAuthRoute && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
-
-  // Forward pathname to server components via header
-  supabaseResponse.headers.set('x-next-pathname', pathname);
 
   return supabaseResponse;
 }

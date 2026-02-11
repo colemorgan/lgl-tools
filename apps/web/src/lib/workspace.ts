@@ -15,7 +15,7 @@ export interface WorkspaceContext {
 
 /**
  * Get the workspace context for a user. Returns null if the user
- * is not a member of any active workspace.
+ * is not a member of any active or suspended workspace.
  * Wrapped with React.cache() so multiple server components in one
  * render share a single DB round-trip.
  */
@@ -30,7 +30,7 @@ export const getWorkspaceContext = cache(
         'workspace_id, role, workspaces!inner(id, name, type, status, billing_client_id, stripe_customer_id)'
       )
       .eq('user_id', userId)
-      .eq('workspaces.status', 'active')
+      .in('workspaces.status', ['active', 'suspended'])
       .limit(1)
       .maybeSingle();
 
