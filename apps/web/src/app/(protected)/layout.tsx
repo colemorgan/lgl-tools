@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getUser, getProfile, createClient } from '@/lib/supabase/server';
+import { getWorkspaceContext } from '@/lib/workspace';
 import { Nav } from '@/components/dashboard/nav';
 
 export default async function ProtectedLayout({
@@ -14,20 +15,19 @@ export default async function ProtectedLayout({
   }
 
   const profile = await getProfile();
+  const wsContext = await getWorkspaceContext(user.id);
 
-  // Check if user is a workspace member or legacy billing client
-  const supabase = await createClient();
-  const { data: membership } = await supabase
-    .from('workspace_members')
-    .select('workspace_id, workspaces!inner(status, type)')
-    .eq('user_id', user.id)
-    .eq('workspaces.status', 'active')
-    .limit(1);
+  const isManaged = wsContext?.workspaceType === 'managed';
+  const isManagedOwner = isManaged && wsContext.memberRole === 'owner';
 
-  let isBillingClient = (membership?.length ?? 0) > 0;
+  // Determine billing client visibility:
+  // - Managed owners can see billing
+  // - Non-managed workspace members with billing_client_id can see billing
+  // - Legacy billing_clients.user_id users can see billing
+  let isBillingClient = !!wsContext?.billingClientId;
 
-  // Fallback: check legacy billing_clients.user_id for unmigrated users
   if (!isBillingClient) {
+    const supabase = await createClient();
     const { data: directClient } = await supabase
       .from('billing_clients')
       .select('id')
@@ -44,6 +44,8 @@ export default async function ProtectedLayout({
         userEmail={user.email ?? ''}
         isAdmin={profile?.role === 'admin'}
         isBillingClient={isBillingClient}
+        isManaged={isManaged}
+        isManagedOwner={isManagedOwner}
       />
       <main className="flex-1">{children}</main>
     </div>

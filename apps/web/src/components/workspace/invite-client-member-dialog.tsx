@@ -1,0 +1,139 @@
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+interface InviteClientMemberDialogProps {
+  onInvited: () => void;
+}
+
+export function InviteClientMemberDialog({
+  onInvited,
+}: InviteClientMemberDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [inviteUrl, setInviteUrl] = useState('');
+
+  function reset() {
+    setEmail('');
+    setError('');
+    setInviteUrl('');
+    setSaving(false);
+  }
+
+  async function handleCreate() {
+    setSaving(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/workspace/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email || undefined }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setInviteUrl(data.invite_url);
+        onInvited();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to create invite');
+      }
+    } catch {
+      setError('Failed to create invite');
+    }
+    setSaving(false);
+  }
+
+  async function copyLink() {
+    await navigator.clipboard.writeText(inviteUrl);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        setOpen(val);
+        if (!val) reset();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm">Invite Member</Button>
+      </DialogTrigger>
+      <DialogContent>
+        {inviteUrl ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Invite Created</DialogTitle>
+              <DialogDescription>
+                Share this link with the user to join your workspace.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Invite Link</Label>
+                <div className="mt-1 flex gap-2">
+                  <Input value={inviteUrl} readOnly className="font-mono text-sm" />
+                  <Button onClick={copyLink} variant="secondary">
+                    Copy
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">This link expires in 7 days.</p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setOpen(false)}>Done</Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Invite Team Member</DialogTitle>
+              <DialogDescription>
+                Generate an invite link for a new team member. They will join with the User role.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="invite-email">Email (optional)</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  If provided, only this email can use the invite.
+                </p>
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreate} disabled={saving}>
+                {saving ? 'Creating...' : 'Create Invite'}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

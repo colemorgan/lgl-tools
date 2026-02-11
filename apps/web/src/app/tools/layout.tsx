@@ -1,8 +1,20 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { getUser, getProfile } from '@/lib/supabase/server';
-import { hasActiveAccess, hasWorkspaceAccess } from '@/types';
+import { hasActiveAccess } from '@/types';
+import { getWorkspaceContext } from '@/lib/workspace';
 import { SubscriptionGate } from '@/components/tools/subscription-gate';
+import { WorkspaceSuspendedGate } from '@/components/tools/workspace-suspended-gate';
 import { ToolHeader } from '@/components/tools/tool-header';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default async function ToolsLayout({
   children,
@@ -21,12 +33,44 @@ export default async function ToolsLayout({
     redirect('/login');
   }
 
-  const accessGranted = hasActiveAccess(profile);
+  const wsContext = await getWorkspaceContext(user.id);
+  const isManaged = wsContext?.workspaceType === 'managed';
 
-  if (!accessGranted) {
-    // Check if user belongs to an active managed workspace
-    const workspaceAccess = await hasWorkspaceAccess(user.id);
-    if (!workspaceAccess) {
+  if (isManaged) {
+    // Managed workspace: check workspace status
+    if (wsContext.workspaceStatus === 'suspended') {
+      return <WorkspaceSuspendedGate />;
+    }
+
+    // Extract tool slug from pathname
+    const headerList = await headers();
+    const pathname = headerList.get('x-next-pathname') || '';
+    const toolSlug = pathname.replace('/tools/', '').split('/')[0];
+
+    if (toolSlug && !wsContext.enabledTools.includes(toolSlug)) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader className="text-center">
+              <CardTitle>Tool Not Available</CardTitle>
+              <CardDescription>
+                This tool is not enabled for your workspace. Contact your
+                workspace administrator to request access.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Back to Dashboard</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+  } else {
+    // Individual subscription check
+    const accessGranted = hasActiveAccess(profile);
+    if (!accessGranted) {
       return <SubscriptionGate profile={profile} />;
     }
   }

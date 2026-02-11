@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 // Routes that require authentication
-const protectedRoutes = ['/dashboard', '/account', '/tools', '/update-password', '/admin'];
+const protectedRoutes = ['/dashboard', '/account', '/tools', '/update-password', '/admin', '/team', '/billing'];
 
 // Routes that should redirect to dashboard if authenticated
 const authRoutes = ['/login', '/signup', '/reset-password'];
@@ -32,6 +32,9 @@ export async function middleware(request: NextRequest) {
   if (isAuthRoute && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
+
+  // Forward pathname to server components via header
+  supabaseResponse.headers.set('x-next-pathname', pathname);
 
   return supabaseResponse;
 }

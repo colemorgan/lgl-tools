@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe, createOrRetrieveCustomer } from '@/lib/stripe';
+import { getWorkspaceContext } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,14 @@ export async function GET() {
     if (userError || !user) {
       return NextResponse.redirect(
         new URL('/login?redirectTo=/api/create-checkout', process.env.NEXT_PUBLIC_APP_URL!)
+      );
+    }
+
+    // Prevent managed workspace users from subscribing to Technician plan
+    const wsContext = await getWorkspaceContext(user.id);
+    if (wsContext?.workspaceType === 'managed') {
+      return NextResponse.redirect(
+        new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL!)
       );
     }
 
