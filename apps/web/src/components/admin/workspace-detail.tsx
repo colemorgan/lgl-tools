@@ -263,7 +263,7 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
                   <label className="text-sm font-medium text-muted-foreground">Primary Contact</label>
                   <p className="text-sm">{workspace.primary_contact_name || '--'}</p>
                 </div>
-                {(workspace.company_address_street || workspace.company_address_city) && (
+                {(workspace.company_address_street || workspace.company_address_city || workspace.company_address_state || workspace.company_address_zip || workspace.company_address_country) && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Billing Address</label>
                     <p className="text-sm">

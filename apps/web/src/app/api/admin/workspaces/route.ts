@@ -88,6 +88,9 @@ export async function POST(request: NextRequest) {
     if (!primary_contact_name) {
       return NextResponse.json({ error: 'primary_contact_name is required' }, { status: 400 });
     }
+    if (!contact_email) {
+      return NextResponse.json({ error: 'contact_email is required' }, { status: 400 });
+    }
 
     const supabase = createAdminClient();
 

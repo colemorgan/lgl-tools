@@ -31,6 +31,7 @@ export function EditCompanyInfoDialog({ workspace, onUpdated }: EditCompanyInfoD
   const [contactEmail, setContactEmail] = useState(workspace.contact_email ?? '');
   const [contactPhone, setContactPhone] = useState(workspace.contact_phone ?? '');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   function resetFields() {
     setCompanyName(workspace.company_name ?? '');
@@ -47,6 +48,7 @@ export function EditCompanyInfoDialog({ workspace, onUpdated }: EditCompanyInfoD
 
   async function handleSave() {
     setSaving(true);
+    setError('');
     try {
       const res = await fetch(`/api/admin/workspaces/${workspace.id}`, {
         method: 'PATCH',
@@ -68,9 +70,12 @@ export function EditCompanyInfoDialog({ workspace, onUpdated }: EditCompanyInfoD
       if (res.ok) {
         setOpen(false);
         onUpdated();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to update company info');
       }
-    } catch (error) {
-      console.error('Failed to update company info:', error);
+    } catch {
+      setError('Failed to update company info');
     }
     setSaving(false);
   }
@@ -192,6 +197,7 @@ export function EditCompanyInfoDialog({ workspace, onUpdated }: EditCompanyInfoD
             </div>
           </div>
 
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <Button onClick={handleSave} disabled={saving} className="w-full">
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>

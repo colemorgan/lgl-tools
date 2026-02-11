@@ -168,9 +168,9 @@ export async function PATCH(
     if (data.stripe_customer_id) {
       try {
         const stripeUpdates: Record<string, unknown> = {};
-        if (company_name !== undefined) stripeUpdates.name = company_name || undefined;
-        if (contact_email !== undefined) stripeUpdates.email = contact_email || undefined;
-        if (contact_phone !== undefined) stripeUpdates.phone = contact_phone || undefined;
+        if (company_name !== undefined) stripeUpdates.name = company_name || '';
+        if (contact_email !== undefined) stripeUpdates.email = contact_email || '';
+        if (contact_phone !== undefined) stripeUpdates.phone = contact_phone || '';
         if (
           company_address_street !== undefined ||
           company_address_city !== undefined ||
@@ -179,11 +179,11 @@ export async function PATCH(
           company_address_country !== undefined
         ) {
           stripeUpdates.address = {
-            line1: data.company_address_street || undefined,
-            city: data.company_address_city || undefined,
-            state: data.company_address_state || undefined,
-            postal_code: data.company_address_zip || undefined,
-            country: data.company_address_country || undefined,
+            line1: data.company_address_street || '',
+            city: data.company_address_city || '',
+            state: data.company_address_state || '',
+            postal_code: data.company_address_zip || '',
+            country: data.company_address_country || '',
           };
         }
         if (Object.keys(stripeUpdates).length > 0) {
