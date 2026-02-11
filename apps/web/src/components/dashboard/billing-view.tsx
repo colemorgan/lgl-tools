@@ -104,6 +104,28 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
   }
 
   if (!data?.billing_client) {
+    // Workspace owners can set up billing themselves
+    if (isWorkspaceOwner) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Set Up Billing</CardTitle>
+            <CardDescription>
+              Add a payment method to get started with billing for your workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleUpdatePaymentMethod}
+              disabled={updatingPayment}
+            >
+              {updatingPayment ? 'Loading...' : 'Add Payment Method'}
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
     return (
       <Card>
         <CardContent className="py-8">
