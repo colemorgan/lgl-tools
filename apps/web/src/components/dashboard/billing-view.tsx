@@ -26,6 +26,10 @@ interface BillingData {
   charges: ScheduledCharge[];
 }
 
+interface BillingViewProps {
+  isWorkspaceOwner?: boolean;
+}
+
 function formatCurrency(amountCents: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -41,10 +45,12 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export function BillingView() {
+export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchBilling() {
@@ -61,6 +67,25 @@ export function BillingView() {
     }
     fetchBilling();
   }, []);
+
+  async function handleUpdatePaymentMethod() {
+    setUpdatingPayment(true);
+    setPaymentError(null);
+    try {
+      const res = await fetch('/api/workspace/update-payment-method', {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (json.url) {
+        window.location.href = json.url;
+      } else {
+        setPaymentError(json.error || 'Failed to create setup session');
+      }
+    } catch {
+      setPaymentError('Failed to update payment method');
+    }
+    setUpdatingPayment(false);
+  }
 
   if (loading) {
     return (
@@ -81,6 +106,31 @@ export function BillingView() {
   }
 
   if (!data?.billing_client) {
+    // Workspace owners can set up billing themselves
+    if (isWorkspaceOwner) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Set Up Billing</CardTitle>
+            <CardDescription>
+              Add a payment method to get started with billing for your workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {paymentError && (
+              <p className="text-sm text-destructive">{paymentError}</p>
+            )}
+            <Button
+              onClick={handleUpdatePaymentMethod}
+              disabled={updatingPayment}
+            >
+              {updatingPayment ? 'Loading...' : 'Add Payment Method'}
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
     return (
       <Card>
         <CardContent className="py-8">
@@ -158,6 +208,42 @@ export function BillingView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Method Card (workspace owners only) */}
+      {isWorkspaceOwner && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment Method</CardTitle>
+            <CardDescription>Card on file for scheduled charges</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {data.billing_client.stripe_payment_method_id ? (
+                  <Badge variant="default">Card on file</Badge>
+                ) : (
+                  <Badge variant="outline">No card saved</Badge>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUpdatePaymentMethod}
+                disabled={updatingPayment}
+              >
+                {updatingPayment
+                  ? 'Loading...'
+                  : data.billing_client.stripe_payment_method_id
+                    ? 'Update Card'
+                    : 'Add Card'}
+              </Button>
+            </div>
+            {paymentError && (
+              <p className="text-sm text-destructive">{paymentError}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Failed Charges Alert */}
       {failedCharges.length > 0 && (

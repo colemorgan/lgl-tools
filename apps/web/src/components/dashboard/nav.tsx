@@ -21,14 +21,18 @@ interface NavProps {
   userEmail: string;
   isAdmin?: boolean;
   isBillingClient?: boolean;
+  isManaged?: boolean;
+  isManagedOwner?: boolean;
 }
 
-const navLinks = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/account', label: 'Account' },
-];
-
-export function Nav({ userName, userEmail, isAdmin, isBillingClient }: NavProps) {
+export function Nav({
+  userName,
+  userEmail,
+  isAdmin,
+  isBillingClient,
+  isManaged,
+  isManagedOwner,
+}: NavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -42,6 +46,13 @@ export function Nav({ userName, userEmail, isAdmin, isBillingClient }: NavProps)
         .slice(0, 2)
     : userEmail?.[0]?.toUpperCase() || '?';
 
+  // Billing link: visible for managed owners OR non-managed billing clients
+  // Hidden for managed users (non-owner)
+  const showBilling = isManagedOwner || (!isManaged && isBillingClient);
+
+  // Team link: visible only for managed workspace owners
+  const showTeam = isManagedOwner;
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push('/');
@@ -54,21 +65,29 @@ export function Nav({ userName, userEmail, isAdmin, isBillingClient }: NavProps)
         <div className="flex items-center gap-8">
           <Logo height={32} href="/dashboard" />
           <nav className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  'text-sm font-medium transition-colors hover:text-primary',
-                  pathname === link.href
-                    ? 'text-foreground'
-                    : 'text-muted-foreground'
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-            {isBillingClient && (
+            <Link
+              href="/dashboard"
+              className={cn(
+                'text-sm font-medium transition-colors hover:text-primary',
+                pathname === '/dashboard'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground'
+              )}
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/account"
+              className={cn(
+                'text-sm font-medium transition-colors hover:text-primary',
+                pathname === '/account'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground'
+              )}
+            >
+              Account
+            </Link>
+            {showBilling && (
               <Link
                 href="/billing"
                 className={cn(
@@ -79,6 +98,19 @@ export function Nav({ userName, userEmail, isAdmin, isBillingClient }: NavProps)
                 )}
               >
                 Billing
+              </Link>
+            )}
+            {showTeam && (
+              <Link
+                href="/team"
+                className={cn(
+                  'text-sm font-medium transition-colors hover:text-primary',
+                  pathname === '/team'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground'
+                )}
+              >
+                Team
               </Link>
             )}
             {isAdmin && (
@@ -123,9 +155,14 @@ export function Nav({ userName, userEmail, isAdmin, isBillingClient }: NavProps)
             <DropdownMenuItem asChild className="md:hidden">
               <Link href="/account">Account</Link>
             </DropdownMenuItem>
-            {isBillingClient && (
+            {showBilling && (
               <DropdownMenuItem asChild className="md:hidden">
                 <Link href="/billing">Billing</Link>
+              </DropdownMenuItem>
+            )}
+            {showTeam && (
+              <DropdownMenuItem asChild className="md:hidden">
+                <Link href="/team">Team</Link>
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator className="md:hidden" />

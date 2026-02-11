@@ -2,14 +2,19 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 // Routes that require authentication
-const protectedRoutes = ['/dashboard', '/account', '/tools', '/update-password', '/admin'];
+const protectedRoutes = ['/dashboard', '/account', '/tools', '/update-password', '/admin', '/team', '/billing'];
 
 // Routes that should redirect to dashboard if authenticated
 const authRoutes = ['/login', '/signup', '/reset-password'];
 
 export async function middleware(request: NextRequest) {
-  const { user, supabaseResponse } = await updateSession(request);
   const { pathname } = request.nextUrl;
+
+  // Forward pathname to server components via request header
+  // (must be set before updateSession so NextResponse.next({ request }) includes it)
+  request.headers.set('x-next-pathname', pathname);
+
+  const { user, supabaseResponse } = await updateSession(request);
 
   // Check if the route is protected
   const isProtectedRoute = protectedRoutes.some(route =>

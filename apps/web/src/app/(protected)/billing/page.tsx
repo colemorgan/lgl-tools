@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { getProfile } from '@/lib/supabase/server';
+import { getUser, getProfile } from '@/lib/supabase/server';
+import { getWorkspaceContext } from '@/lib/workspace';
 import { BillingView } from '@/components/dashboard/billing-view';
 
 export const metadata = {
@@ -7,11 +8,27 @@ export const metadata = {
 };
 
 export default async function BillingPage() {
+  const user = await getUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
   const profile = await getProfile();
 
   if (!profile) {
     redirect('/login');
   }
+
+  const wsContext = await getWorkspaceContext(user.id);
+  const isManaged = wsContext?.workspaceType === 'managed';
+
+  // Managed user (non-owner) cannot access billing
+  if (isManaged && wsContext.memberRole !== 'owner') {
+    redirect('/dashboard');
+  }
+
+  const isWorkspaceOwner = isManaged && wsContext.memberRole === 'owner';
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -23,7 +40,7 @@ export default async function BillingPage() {
           </p>
         </div>
 
-        <BillingView />
+        <BillingView isWorkspaceOwner={isWorkspaceOwner} />
       </div>
     </div>
   );
