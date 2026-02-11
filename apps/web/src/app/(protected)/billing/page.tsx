@@ -36,7 +36,7 @@ export default async function BillingPage({
 
   const params = await searchParams;
   const setupRequired = params.setup_required === 'true';
-  const showSetupWalkthrough = setupRequired && !wsContext?.stripePaymentMethodId;
+  const showSetupWalkthrough = setupRequired && isWorkspaceOwner && !wsContext?.stripePaymentMethodId;
 
   return (
     <div className="container mx-auto px-4 py-8">
