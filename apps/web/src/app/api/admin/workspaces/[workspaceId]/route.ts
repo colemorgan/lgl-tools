@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { stripe } from '@/lib/stripe';
 
 export async function GET(
   _request: NextRequest,
@@ -117,11 +118,33 @@ export async function PATCH(
   try {
     const { workspaceId } = await params;
     const body = await request.json();
-    const { name, status, contact_email, contact_phone, notes } = body;
+    const {
+      name,
+      status,
+      company_name,
+      company_tax_id,
+      company_address_street,
+      company_address_city,
+      company_address_state,
+      company_address_zip,
+      company_address_country,
+      primary_contact_name,
+      contact_email,
+      contact_phone,
+      notes,
+    } = body;
 
     const updates: Record<string, string | null> = {};
     if (name) updates.name = name;
     if (status && ['active', 'suspended', 'closed'].includes(status)) updates.status = status;
+    if (company_name !== undefined) updates.company_name = company_name || null;
+    if (company_tax_id !== undefined) updates.company_tax_id = company_tax_id || null;
+    if (company_address_street !== undefined) updates.company_address_street = company_address_street || null;
+    if (company_address_city !== undefined) updates.company_address_city = company_address_city || null;
+    if (company_address_state !== undefined) updates.company_address_state = company_address_state || null;
+    if (company_address_zip !== undefined) updates.company_address_zip = company_address_zip || null;
+    if (company_address_country !== undefined) updates.company_address_country = company_address_country || null;
+    if (primary_contact_name !== undefined) updates.primary_contact_name = primary_contact_name || null;
     if (contact_email !== undefined) updates.contact_email = contact_email || null;
     if (contact_phone !== undefined) updates.contact_phone = contact_phone || null;
     if (notes !== undefined) updates.notes = notes || null;
@@ -140,6 +163,36 @@ export async function PATCH(
       .single();
 
     if (error) throw error;
+
+    // Sync company info to Stripe customer if linked
+    if (data.stripe_customer_id) {
+      try {
+        const stripeUpdates: Record<string, unknown> = {};
+        if (company_name !== undefined) stripeUpdates.name = company_name || '';
+        if (contact_email !== undefined) stripeUpdates.email = contact_email || '';
+        if (contact_phone !== undefined) stripeUpdates.phone = contact_phone || '';
+        if (
+          company_address_street !== undefined ||
+          company_address_city !== undefined ||
+          company_address_state !== undefined ||
+          company_address_zip !== undefined ||
+          company_address_country !== undefined
+        ) {
+          stripeUpdates.address = {
+            line1: data.company_address_street || '',
+            city: data.company_address_city || '',
+            state: data.company_address_state || '',
+            postal_code: data.company_address_zip || '',
+            country: data.company_address_country || '',
+          };
+        }
+        if (Object.keys(stripeUpdates).length > 0) {
+          await stripe.customers.update(data.stripe_customer_id, stripeUpdates);
+        }
+      } catch (stripeError) {
+        console.error('Failed to sync company info to Stripe:', stripeError);
+      }
+    }
 
     return NextResponse.json(data);
   } catch (error) {

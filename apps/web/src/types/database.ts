@@ -77,6 +77,14 @@ export interface Workspace {
   stripe_customer_id: string | null;
   stripe_payment_method_id: string | null;
   status: WorkspaceStatus;
+  company_name: string | null;
+  company_address_street: string | null;
+  company_address_city: string | null;
+  company_address_state: string | null;
+  company_address_zip: string | null;
+  company_address_country: string | null;
+  company_tax_id: string | null;
+  primary_contact_name: string | null;
   created_at: string;
   updated_at: string;
 }
