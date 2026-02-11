@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/resend';
+import { getWorkspaceContext, needsPaymentSetup } from '@/lib/workspace';
 import WelcomeEmail from '../../../../emails/welcome';
 import { NextResponse } from 'next/server';
 
@@ -46,15 +47,24 @@ export async function GET(request: Request) {
         }
       }
 
+      // Override redirect for managed workspace owners who need to set up billing
+      let redirectPath = next;
+      if (user && next === '/dashboard') {
+        const wsContext = await getWorkspaceContext(user.id);
+        if (needsPaymentSetup(wsContext)) {
+          redirectPath = '/billing?setup_required=true';
+        }
+      }
+
       const forwardedHost = request.headers.get('x-forwarded-host');
       const isLocalEnv = process.env.NODE_ENV === 'development';
 
       if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`);
+        return NextResponse.redirect(`${origin}${redirectPath}`);
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`);
+        return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`);
       } else {
-        return NextResponse.redirect(`${origin}${next}`);
+        return NextResponse.redirect(`${origin}${redirectPath}`);
       }
     }
   }

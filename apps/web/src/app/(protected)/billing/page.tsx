@@ -7,7 +7,11 @@ export const metadata = {
   title: 'Billing',
 };
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const user = await getUser();
 
   if (!user) {
@@ -30,17 +34,26 @@ export default async function BillingPage() {
 
   const isWorkspaceOwner = isManaged && wsContext.memberRole === 'owner';
 
+  const params = await searchParams;
+  const setupRequired = params.setup_required === 'true';
+  const showSetupWalkthrough = setupRequired && !wsContext?.stripePaymentMethodId;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
           <h1 className="font-heading text-3xl font-bold tracking-tight">Billing</h1>
           <p className="text-muted-foreground mt-1">
-            View your upcoming bills and invoice history
+            {showSetupWalkthrough
+              ? 'Please add a payment method to activate your workspace'
+              : 'View your upcoming bills and invoice history'}
           </p>
         </div>
 
-        <BillingView isWorkspaceOwner={isWorkspaceOwner} />
+        <BillingView
+          isWorkspaceOwner={isWorkspaceOwner}
+          showSetupWalkthrough={showSetupWalkthrough}
+        />
       </div>
     </div>
   );

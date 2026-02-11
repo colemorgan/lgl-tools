@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { getUser, getProfile } from '@/lib/supabase/server';
 import { hasActiveAccess } from '@/types';
 import { tools } from '@/config/tools';
-import { getWorkspaceContext } from '@/lib/workspace';
+import { getWorkspaceContext, needsPaymentSetup } from '@/lib/workspace';
 import { TrialBanner } from '@/components/dashboard/trial-banner';
 import { ToolCard } from '@/components/dashboard/tool-card';
 import {
@@ -30,6 +30,11 @@ export default async function DashboardPage() {
   }
 
   const wsContext = await getWorkspaceContext(user.id);
+
+  if (needsPaymentSetup(wsContext)) {
+    redirect('/billing?setup_required=true');
+  }
+
   const isManaged = wsContext?.workspaceType === 'managed';
 
   const accessGranted = isManaged ? true : hasActiveAccess(profile);

@@ -10,6 +10,7 @@ export interface WorkspaceContext {
   memberRole: WorkspaceMemberRole;
   billingClientId: string | null;
   stripeCustomerId: string | null;
+  stripePaymentMethodId: string | null;
   enabledTools: string[];
 }
 
@@ -27,7 +28,7 @@ export const getWorkspaceContext = cache(
     const { data: membership } = await supabase
       .from('workspace_members')
       .select(
-        'workspace_id, role, workspaces!inner(id, name, type, status, billing_client_id, stripe_customer_id)'
+        'workspace_id, role, workspaces!inner(id, name, type, status, billing_client_id, stripe_customer_id, stripe_payment_method_id)'
       )
       .eq('user_id', userId)
       .in('workspaces.status', ['active', 'suspended'])
@@ -43,6 +44,7 @@ export const getWorkspaceContext = cache(
       status: WorkspaceStatus;
       billing_client_id: string | null;
       stripe_customer_id: string | null;
+      stripe_payment_method_id: string | null;
     };
 
     // Fetch enabled tools for this workspace
@@ -60,6 +62,7 @@ export const getWorkspaceContext = cache(
       memberRole: membership.role as WorkspaceMemberRole,
       billingClientId: ws.billing_client_id,
       stripeCustomerId: ws.stripe_customer_id,
+      stripePaymentMethodId: ws.stripe_payment_method_id,
       enabledTools: (tools ?? []).map((t) => t.tool_id),
     };
   }
@@ -82,6 +85,18 @@ export async function requireWorkspaceOwner(userId: string): Promise<{
     workspaceId: ctx.workspaceId,
     billingClientId: ctx.billingClientId,
   };
+}
+
+/**
+ * Check if a managed workspace owner still needs to add a payment method.
+ */
+export function needsPaymentSetup(ctx: WorkspaceContext | null): boolean {
+  if (!ctx) return false;
+  return (
+    ctx.workspaceType === 'managed' &&
+    ctx.memberRole === 'owner' &&
+    !ctx.stripePaymentMethodId
+  );
 }
 
 /**
