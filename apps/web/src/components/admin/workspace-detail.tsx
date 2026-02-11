@@ -25,6 +25,7 @@ import { InviteWorkspaceMemberDialog } from './invite-workspace-member-dialog';
 import { AddExistingMemberDialog } from './add-existing-member-dialog';
 import { ChargesTable } from './charges-table';
 import { AddChargeDialog } from './add-charge-dialog';
+import { EditCompanyInfoDialog } from './edit-company-info-dialog';
 import type { Workspace, WorkspaceMember, WorkspaceTool, ClientInvite, ScheduledCharge } from '@/types';
 
 interface MemberWithProfile extends WorkspaceMember {
@@ -239,6 +240,54 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
               </div>
             )}
           </div>
+
+          {/* Company Information */}
+          {workspace.type === 'managed' && (
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-foreground">Company Information</h4>
+                <EditCompanyInfoDialog workspace={workspace} onUpdated={fetchWorkspace} />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Company Name</label>
+                  <p className="text-sm">{workspace.company_name || '--'}</p>
+                </div>
+                {workspace.company_tax_id && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Tax ID / EIN</label>
+                    <p className="text-sm">{workspace.company_tax_id}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Primary Contact</label>
+                  <p className="text-sm">{workspace.primary_contact_name || '--'}</p>
+                </div>
+                {(workspace.company_address_street || workspace.company_address_city) && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Billing Address</label>
+                    <p className="text-sm">
+                      {[
+                        workspace.company_address_street,
+                        [workspace.company_address_city, workspace.company_address_state].filter(Boolean).join(', '),
+                        workspace.company_address_zip,
+                        workspace.company_address_country,
+                      ]
+                        .filter(Boolean)
+                        .join('\n')
+                        .split('\n')
+                        .map((line, i) => (
+                          <span key={i}>
+                            {line}
+                            <br />
+                          </span>
+                        ))}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {workspace.billing_client_id && (
             <div className="flex gap-4 pt-4">

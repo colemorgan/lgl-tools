@@ -63,19 +63,46 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, contact_email, contact_phone, notes, tools: toolSelections } = body;
+    const {
+      name,
+      company_name,
+      company_tax_id,
+      company_address_street,
+      company_address_city,
+      company_address_state,
+      company_address_zip,
+      company_address_country,
+      primary_contact_name,
+      contact_email,
+      contact_phone,
+      notes,
+      tools: toolSelections,
+    } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 });
+    }
+    if (!company_name) {
+      return NextResponse.json({ error: 'company_name is required' }, { status: 400 });
+    }
+    if (!primary_contact_name) {
+      return NextResponse.json({ error: 'primary_contact_name is required' }, { status: 400 });
     }
 
     const supabase = createAdminClient();
 
     // Admin-created workspaces are always managed — create a Stripe Customer
     const customer = await stripe.customers.create({
-      name,
+      name: company_name,
       email: contact_email || undefined,
       phone: contact_phone || undefined,
+      address: {
+        line1: company_address_street || undefined,
+        city: company_address_city || undefined,
+        state: company_address_state || undefined,
+        postal_code: company_address_zip || undefined,
+        country: company_address_country || undefined,
+      },
       metadata: { workspace: 'true' },
     });
 
@@ -99,6 +126,14 @@ export async function POST(request: NextRequest) {
       .insert({
         name,
         type: 'managed',
+        company_name: company_name || null,
+        company_tax_id: company_tax_id || null,
+        company_address_street: company_address_street || null,
+        company_address_city: company_address_city || null,
+        company_address_state: company_address_state || null,
+        company_address_zip: company_address_zip || null,
+        company_address_country: company_address_country || null,
+        primary_contact_name: primary_contact_name || null,
         contact_email: contact_email || null,
         contact_phone: contact_phone || null,
         notes: notes || null,

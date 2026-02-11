@@ -43,6 +43,7 @@ export function WorkspacesTable() {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
+            <TableHead>Company</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Members</TableHead>
             <TableHead>Pending Charges</TableHead>
@@ -54,13 +55,13 @@ export function WorkspacesTable() {
         <TableBody>
           {loading ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                 Loading...
               </TableCell>
             </TableRow>
           ) : workspaces.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                 No workspaces yet
               </TableCell>
             </TableRow>
@@ -68,6 +69,7 @@ export function WorkspacesTable() {
             workspaces.map((ws) => (
               <TableRow key={ws.id}>
                 <TableCell className="font-medium">{ws.name}</TableCell>
+                <TableCell className="text-muted-foreground">{ws.company_name || '--'}</TableCell>
                 <TableCell>
                   <Badge variant={statusVariant[ws.status]}>{ws.status}</Badge>
                 </TableCell>
