@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { WalkthroughTooltip } from '@/components/ui/walkthrough-tooltip';
 import type { BillingClient, ScheduledCharge } from '@/types';
 
 interface BillingData {
@@ -28,6 +29,7 @@ interface BillingData {
 
 interface BillingViewProps {
   isWorkspaceOwner?: boolean;
+  showSetupWalkthrough?: boolean;
 }
 
 function formatCurrency(amountCents: number, currency: string): string {
@@ -45,12 +47,30 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
+const WALKTHROUGH_DISMISSED_KEY = 'lgl_setup_walkthrough_dismissed';
+
+export function BillingView({ isWorkspaceOwner, showSetupWalkthrough }: BillingViewProps) {
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPayment, setUpdatingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [tooltipDismissed, setTooltipDismissed] = useState(false);
+  const addCardButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(WALKTHROUGH_DISMISSED_KEY)) {
+      setTooltipDismissed(true);
+    }
+  }, []);
+
+  function dismissTooltip() {
+    setTooltipDismissed(true);
+    sessionStorage.setItem(WALKTHROUGH_DISMISSED_KEY, '1');
+  }
+
+  const hasCard = data?.billing_client?.stripe_payment_method_id;
+  const showTooltip = !!showSetupWalkthrough && !loading && !tooltipDismissed && !hasCard;
 
   useEffect(() => {
     async function fetchBilling() {
@@ -120,12 +140,21 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
             {paymentError && (
               <p className="text-sm text-destructive">{paymentError}</p>
             )}
-            <Button
-              onClick={handleUpdatePaymentMethod}
-              disabled={updatingPayment}
-            >
-              {updatingPayment ? 'Loading...' : 'Add Payment Method'}
-            </Button>
+            <div className={showTooltip ? 'relative z-[51]' : undefined}>
+              <Button
+                ref={addCardButtonRef}
+                onClick={handleUpdatePaymentMethod}
+                disabled={updatingPayment}
+              >
+                {updatingPayment ? 'Loading...' : 'Add Payment Method'}
+              </Button>
+            </div>
+            <WalkthroughTooltip
+              targetRef={addCardButtonRef}
+              message="Add a payment method to activate your workspace. Your card will be used for scheduled charges."
+              onDismiss={dismissTooltip}
+              show={showTooltip}
+            />
           </CardContent>
         </Card>
       );
@@ -217,7 +246,7 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
             <CardDescription>Card on file for scheduled charges</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between${showTooltip ? ' relative z-[51]' : ''}`}>
               <div className="flex items-center gap-2">
                 {data.billing_client.stripe_payment_method_id ? (
                   <Badge variant="default">Card on file</Badge>
@@ -226,6 +255,7 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
                 )}
               </div>
               <Button
+                ref={addCardButtonRef}
                 variant="outline"
                 size="sm"
                 onClick={handleUpdatePaymentMethod}
@@ -241,6 +271,12 @@ export function BillingView({ isWorkspaceOwner }: BillingViewProps) {
             {paymentError && (
               <p className="text-sm text-destructive">{paymentError}</p>
             )}
+            <WalkthroughTooltip
+              targetRef={addCardButtonRef}
+              message="Add a payment method to activate your workspace. Your card will be used for scheduled charges."
+              onDismiss={dismissTooltip}
+              show={showTooltip}
+            />
           </CardContent>
         </Card>
       )}
