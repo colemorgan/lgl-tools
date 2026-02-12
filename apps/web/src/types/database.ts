@@ -66,6 +66,10 @@ export type WorkspaceStatus = 'active' | 'suspended' | 'closed';
 
 export type WorkspaceMemberRole = 'owner' | 'user';
 
+export type CollectionMethod = 'charge_automatically' | 'send_invoice';
+
+export type PaymentMethodType = 'card' | 'us_bank_account';
+
 export interface Workspace {
   id: string;
   name: string;
@@ -85,6 +89,9 @@ export interface Workspace {
   company_address_country: string | null;
   company_tax_id: string | null;
   primary_contact_name: string | null;
+  collection_method: CollectionMethod;
+  allowed_payment_methods: PaymentMethodType[];
+  days_until_due: number;
   created_at: string;
   updated_at: string;
 }

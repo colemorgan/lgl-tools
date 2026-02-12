@@ -155,8 +155,23 @@ export async function GET(request: Request) {
           status: string;
         };
 
-        // Skip if client is not active or has no saved payment method
-        if (client.status !== 'active' || !client.stripe_customer_id || !client.stripe_payment_method_id) {
+        if (client.status !== 'active' || !client.stripe_customer_id) {
+          continue;
+        }
+
+        // Look up workspace billing settings for this billing client
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('collection_method, allowed_payment_methods, days_until_due')
+          .eq('billing_client_id', client.id)
+          .single();
+
+        const collectionMethod = ws?.collection_method ?? 'charge_automatically';
+        const allowedPaymentMethods = (ws?.allowed_payment_methods as string[] | null) ?? ['card'];
+        const daysUntilDue = ws?.days_until_due ?? 30;
+
+        // For auto-charge mode, require a saved payment method
+        if (collectionMethod === 'charge_automatically' && !client.stripe_payment_method_id) {
           continue;
         }
 
@@ -168,47 +183,95 @@ export async function GET(request: Request) {
 
         let stripeInvoiceId: string | null = null;
         try {
-          // Create invoice first (empty), then add the line item to it
-          const invoice = await stripe.invoices.create({
-            customer: client.stripe_customer_id,
-            default_payment_method: client.stripe_payment_method_id,
-            auto_advance: false,
-            collection_method: 'charge_automatically',
-            pending_invoice_items_behavior: 'exclude',
-            metadata: {
-              billing_client_id: client.id,
-              scheduled_charge_id: charge.id,
-              supabase_user_id: client.user_id,
-            },
-          });
+          if (collectionMethod === 'send_invoice') {
+            // Send Invoice mode: create invoice and email to client
+            const invoice = await stripe.invoices.create({
+              customer: client.stripe_customer_id,
+              collection_method: 'send_invoice',
+              days_until_due: daysUntilDue,
+              auto_advance: true,
+              pending_invoice_items_behavior: 'exclude',
+              payment_settings: {
+                payment_method_types: allowedPaymentMethods as ('card' | 'us_bank_account')[],
+              },
+              metadata: {
+                billing_client_id: client.id,
+                scheduled_charge_id: charge.id,
+                supabase_user_id: client.user_id,
+              },
+            });
 
-          stripeInvoiceId = invoice.id;
+            stripeInvoiceId = invoice.id;
 
-          await stripe.invoiceItems.create({
-            customer: client.stripe_customer_id,
-            invoice: invoice.id,
-            amount: charge.amount_cents,
-            currency: charge.currency,
-            description: charge.description || 'Scheduled charge',
-          });
+            await stripe.invoiceItems.create({
+              customer: client.stripe_customer_id,
+              invoice: invoice.id,
+              amount: charge.amount_cents,
+              currency: charge.currency,
+              description: charge.description || 'Scheduled charge',
+            });
 
-          const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-          const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id, {
-            payment_method: client.stripe_payment_method_id!,
-          });
+            const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+            await stripe.invoices.sendInvoice(finalizedInvoice.id);
 
-          await supabase
-            .from('scheduled_charges')
-            .update({
-              status: 'succeeded',
-              stripe_invoice_id: paidInvoice.id,
-              stripe_invoice_url: paidInvoice.hosted_invoice_url,
-              stripe_invoice_pdf: paidInvoice.invoice_pdf,
-              processed_at: new Date().toISOString(),
-            })
-            .eq('id', charge.id);
+            // Re-fetch the invoice to get the hosted URL after sending
+            const sentInvoice = await stripe.invoices.retrieve(finalizedInvoice.id);
 
-          results.chargesProcessed++;
+            await supabase
+              .from('scheduled_charges')
+              .update({
+                status: 'processing',
+                stripe_invoice_id: sentInvoice.id,
+                stripe_invoice_url: sentInvoice.hosted_invoice_url,
+                stripe_invoice_pdf: sentInvoice.invoice_pdf,
+                processed_at: new Date().toISOString(),
+              })
+              .eq('id', charge.id);
+
+            results.chargesProcessed++;
+          } else {
+            // Auto-charge mode: create invoice and pay immediately with saved card
+            const invoice = await stripe.invoices.create({
+              customer: client.stripe_customer_id,
+              default_payment_method: client.stripe_payment_method_id,
+              auto_advance: false,
+              collection_method: 'charge_automatically',
+              pending_invoice_items_behavior: 'exclude',
+              metadata: {
+                billing_client_id: client.id,
+                scheduled_charge_id: charge.id,
+                supabase_user_id: client.user_id,
+              },
+            });
+
+            stripeInvoiceId = invoice.id;
+
+            await stripe.invoiceItems.create({
+              customer: client.stripe_customer_id,
+              invoice: invoice.id,
+              amount: charge.amount_cents,
+              currency: charge.currency,
+              description: charge.description || 'Scheduled charge',
+            });
+
+            const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+            const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id, {
+              payment_method: client.stripe_payment_method_id!,
+            });
+
+            await supabase
+              .from('scheduled_charges')
+              .update({
+                status: 'succeeded',
+                stripe_invoice_id: paidInvoice.id,
+                stripe_invoice_url: paidInvoice.hosted_invoice_url,
+                stripe_invoice_pdf: paidInvoice.invoice_pdf,
+                processed_at: new Date().toISOString(),
+              })
+              .eq('id', charge.id);
+
+            results.chargesProcessed++;
+          }
         } catch (paymentError) {
           const errorMessage = paymentError instanceof Error ? paymentError.message : 'Payment failed';
 
@@ -297,7 +360,23 @@ export async function GET(request: Request) {
           status: string;
         };
 
-        if (client.status !== 'active' || !client.stripe_customer_id || !client.stripe_payment_method_id) {
+        if (client.status !== 'active' || !client.stripe_customer_id) {
+          continue;
+        }
+
+        // Look up workspace billing settings for retry
+        const { data: retryWs } = await supabase
+          .from('workspaces')
+          .select('collection_method, allowed_payment_methods, days_until_due')
+          .eq('billing_client_id', client.id)
+          .single();
+
+        const retryCollectionMethod = retryWs?.collection_method ?? 'charge_automatically';
+        const retryAllowedMethods = (retryWs?.allowed_payment_methods as string[] | null) ?? ['card'];
+        const retryDaysUntilDue = retryWs?.days_until_due ?? 30;
+
+        // For auto-charge mode, require a saved payment method
+        if (retryCollectionMethod === 'charge_automatically' && !client.stripe_payment_method_id) {
           continue;
         }
 
@@ -309,50 +388,100 @@ export async function GET(request: Request) {
 
         let retryInvoiceId: string | null = null;
         try {
-          // Create invoice first (empty), then add the line item to it
-          const invoice = await stripe.invoices.create({
-            customer: client.stripe_customer_id,
-            default_payment_method: client.stripe_payment_method_id,
-            auto_advance: false,
-            collection_method: 'charge_automatically',
-            pending_invoice_items_behavior: 'exclude',
-            metadata: {
-              billing_client_id: client.id,
-              scheduled_charge_id: charge.id,
-              supabase_user_id: client.user_id,
-              retry_count: String(charge.retry_count + 1),
-            },
-          });
+          if (retryCollectionMethod === 'send_invoice') {
+            // Send Invoice mode retry
+            const invoice = await stripe.invoices.create({
+              customer: client.stripe_customer_id,
+              collection_method: 'send_invoice',
+              days_until_due: retryDaysUntilDue,
+              auto_advance: true,
+              pending_invoice_items_behavior: 'exclude',
+              payment_settings: {
+                payment_method_types: retryAllowedMethods as ('card' | 'us_bank_account')[],
+              },
+              metadata: {
+                billing_client_id: client.id,
+                scheduled_charge_id: charge.id,
+                supabase_user_id: client.user_id,
+                retry_count: String(charge.retry_count + 1),
+              },
+            });
 
-          retryInvoiceId = invoice.id;
+            retryInvoiceId = invoice.id;
 
-          await stripe.invoiceItems.create({
-            customer: client.stripe_customer_id,
-            invoice: invoice.id,
-            amount: charge.amount_cents,
-            currency: charge.currency,
-            description: `${charge.description || 'Scheduled charge'} (retry ${charge.retry_count + 1})`,
-          });
+            await stripe.invoiceItems.create({
+              customer: client.stripe_customer_id,
+              invoice: invoice.id,
+              amount: charge.amount_cents,
+              currency: charge.currency,
+              description: `${charge.description || 'Scheduled charge'} (retry ${charge.retry_count + 1})`,
+            });
 
-          const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-          const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id, {
-            payment_method: client.stripe_payment_method_id!,
-          });
+            const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+            await stripe.invoices.sendInvoice(finalizedInvoice.id);
 
-          await supabase
-            .from('scheduled_charges')
-            .update({
-              status: 'succeeded',
-              stripe_invoice_id: paidInvoice.id,
-              stripe_invoice_url: paidInvoice.hosted_invoice_url,
-              stripe_invoice_pdf: paidInvoice.invoice_pdf,
-              processed_at: new Date().toISOString(),
-              retry_count: charge.retry_count + 1,
-              last_retry_at: new Date().toISOString(),
-            })
-            .eq('id', charge.id);
+            const sentInvoice = await stripe.invoices.retrieve(finalizedInvoice.id);
 
-          results.chargesRetried++;
+            await supabase
+              .from('scheduled_charges')
+              .update({
+                status: 'processing',
+                stripe_invoice_id: sentInvoice.id,
+                stripe_invoice_url: sentInvoice.hosted_invoice_url,
+                stripe_invoice_pdf: sentInvoice.invoice_pdf,
+                processed_at: new Date().toISOString(),
+                retry_count: charge.retry_count + 1,
+                last_retry_at: new Date().toISOString(),
+              })
+              .eq('id', charge.id);
+
+            results.chargesRetried++;
+          } else {
+            // Auto-charge mode retry
+            const invoice = await stripe.invoices.create({
+              customer: client.stripe_customer_id,
+              default_payment_method: client.stripe_payment_method_id,
+              auto_advance: false,
+              collection_method: 'charge_automatically',
+              pending_invoice_items_behavior: 'exclude',
+              metadata: {
+                billing_client_id: client.id,
+                scheduled_charge_id: charge.id,
+                supabase_user_id: client.user_id,
+                retry_count: String(charge.retry_count + 1),
+              },
+            });
+
+            retryInvoiceId = invoice.id;
+
+            await stripe.invoiceItems.create({
+              customer: client.stripe_customer_id,
+              invoice: invoice.id,
+              amount: charge.amount_cents,
+              currency: charge.currency,
+              description: `${charge.description || 'Scheduled charge'} (retry ${charge.retry_count + 1})`,
+            });
+
+            const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+            const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id, {
+              payment_method: client.stripe_payment_method_id!,
+            });
+
+            await supabase
+              .from('scheduled_charges')
+              .update({
+                status: 'succeeded',
+                stripe_invoice_id: paidInvoice.id,
+                stripe_invoice_url: paidInvoice.hosted_invoice_url,
+                stripe_invoice_pdf: paidInvoice.invoice_pdf,
+                processed_at: new Date().toISOString(),
+                retry_count: charge.retry_count + 1,
+                last_retry_at: new Date().toISOString(),
+              })
+              .eq('id', charge.id);
+
+            results.chargesRetried++;
+          }
         } catch (retryError) {
           const errorMessage = retryError instanceof Error ? retryError.message : 'Retry failed';
 

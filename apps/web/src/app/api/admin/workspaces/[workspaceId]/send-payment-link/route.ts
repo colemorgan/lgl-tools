@@ -17,16 +17,18 @@ export async function POST(
     const { workspaceId } = await params;
     const supabase = createAdminClient();
 
-    // Get workspace → billing_client_id
+    // Get workspace → billing_client_id + billing settings
     const { data: workspace, error: wsError } = await supabase
       .from('workspaces')
-      .select('billing_client_id')
+      .select('billing_client_id, allowed_payment_methods')
       .eq('id', workspaceId)
       .single();
 
     if (wsError || !workspace?.billing_client_id) {
       return NextResponse.json({ error: 'Workspace not found or has no billing client' }, { status: 404 });
     }
+
+    const allowedPaymentMethods = (workspace.allowed_payment_methods as string[]) ?? ['card'];
 
     // Get billing client
     const { data: client, error: clientError } = await supabase
@@ -57,11 +59,13 @@ export async function POST(
       return NextResponse.json({ error: 'No pending charges found' }, { status: 400 });
     }
 
-    // Create Stripe Checkout session
+    // Create Stripe Checkout session with workspace-specific payment methods
+    const paymentMethodTypes = allowedPaymentMethods as ('card' | 'us_bank_account')[];
+
     const session = await stripe.checkout.sessions.create({
       customer: client.stripe_customer_id,
       mode: 'payment',
-      payment_method_types: ['card'],
+      payment_method_types: paymentMethodTypes,
       line_items: [
         {
           price_data: {
@@ -75,7 +79,7 @@ export async function POST(
         },
       ],
       payment_intent_data: {
-        setup_future_usage: 'off_session',
+        setup_future_usage: allowedPaymentMethods.includes('card') ? 'off_session' : undefined,
         metadata: {
           billing_client_id: workspace.billing_client_id,
           scheduled_charge_id: charge.id,
