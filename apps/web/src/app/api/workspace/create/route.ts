@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
       enabled: tool.status === 'available',
     }));
 
-    await supabaseAdmin.from('workspace_tools').insert(toolRows);
+    const { error: toolsError } = await supabaseAdmin.from('workspace_tools').insert(toolRows);
+    if (toolsError) throw toolsError;
 
     return NextResponse.json(workspace, { status: 201 });
   } catch (error) {
