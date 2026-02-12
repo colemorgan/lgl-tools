@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { getUser, getProfile } from '@/lib/supabase/server';
 import { hasActiveAccess } from '@/types';
 import { tools } from '@/config/tools';
 import { getWorkspaceContext, needsPaymentSetup } from '@/lib/workspace';
 import { TrialBanner } from '@/components/dashboard/trial-banner';
 import { ToolCard } from '@/components/dashboard/tool-card';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -32,10 +34,7 @@ export default async function DashboardPage() {
   }
 
   const wsContext = await getWorkspaceContext(user.id);
-
-  if (needsPaymentSetup(wsContext)) {
-    redirect('/billing?setup_required=true');
-  }
+  const showPaymentSetupBanner = needsPaymentSetup(wsContext);
 
   const isManaged = wsContext?.workspaceType === 'managed';
 
@@ -61,6 +60,23 @@ export default async function DashboardPage() {
               : 'Access your tools and manage your workspace'}
           </p>
         </div>
+
+        {showPaymentSetupBanner && (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardHeader>
+              <CardTitle className="text-lg text-amber-900">Payment Method Required</CardTitle>
+              <CardDescription className="text-amber-800">
+                Add a payment method to activate your workspace and access all your
+                tools.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/billing?setup_required=true">
+                <Button size="sm">Set Up Payment</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
         {!isManaged && <TrialBanner profile={profile} />}
 
