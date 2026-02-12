@@ -166,25 +166,30 @@ export async function GET(request: Request) {
           .update({ status: 'processing' })
           .eq('id', charge.id);
 
+        let stripeInvoiceId: string | null = null;
         try {
-          // Create a Stripe Invoice for professional invoicing
-          await stripe.invoiceItems.create({
-            customer: client.stripe_customer_id,
-            amount: charge.amount_cents,
-            currency: charge.currency,
-            description: charge.description || 'Scheduled charge',
-          });
-
+          // Create invoice first (empty), then add the line item to it
           const invoice = await stripe.invoices.create({
             customer: client.stripe_customer_id,
             default_payment_method: client.stripe_payment_method_id,
-            auto_advance: true,
+            auto_advance: false,
             collection_method: 'charge_automatically',
+            pending_invoice_items_behavior: 'exclude',
             metadata: {
               billing_client_id: client.id,
               scheduled_charge_id: charge.id,
               supabase_user_id: client.user_id,
             },
+          });
+
+          stripeInvoiceId = invoice.id;
+
+          await stripe.invoiceItems.create({
+            customer: client.stripe_customer_id,
+            invoice: invoice.id,
+            amount: charge.amount_cents,
+            currency: charge.currency,
+            description: charge.description || 'Scheduled charge',
           });
 
           const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
@@ -206,6 +211,20 @@ export async function GET(request: Request) {
           results.chargesProcessed++;
         } catch (paymentError) {
           const errorMessage = paymentError instanceof Error ? paymentError.message : 'Payment failed';
+
+          // Void the invoice if it was created but payment failed
+          if (stripeInvoiceId) {
+            try {
+              const inv = await stripe.invoices.retrieve(stripeInvoiceId);
+              if (inv.status === 'draft') {
+                await stripe.invoices.del(stripeInvoiceId);
+              } else if (inv.status === 'open') {
+                await stripe.invoices.voidInvoice(stripeInvoiceId);
+              }
+            } catch {
+              // Best effort — don't block failure handling
+            }
+          }
 
           await supabase
             .from('scheduled_charges')
@@ -288,25 +307,31 @@ export async function GET(request: Request) {
           .update({ status: 'processing' })
           .eq('id', charge.id);
 
+        let retryInvoiceId: string | null = null;
         try {
-          await stripe.invoiceItems.create({
-            customer: client.stripe_customer_id,
-            amount: charge.amount_cents,
-            currency: charge.currency,
-            description: `${charge.description || 'Scheduled charge'} (retry ${charge.retry_count + 1})`,
-          });
-
+          // Create invoice first (empty), then add the line item to it
           const invoice = await stripe.invoices.create({
             customer: client.stripe_customer_id,
             default_payment_method: client.stripe_payment_method_id,
-            auto_advance: true,
+            auto_advance: false,
             collection_method: 'charge_automatically',
+            pending_invoice_items_behavior: 'exclude',
             metadata: {
               billing_client_id: client.id,
               scheduled_charge_id: charge.id,
               supabase_user_id: client.user_id,
               retry_count: String(charge.retry_count + 1),
             },
+          });
+
+          retryInvoiceId = invoice.id;
+
+          await stripe.invoiceItems.create({
+            customer: client.stripe_customer_id,
+            invoice: invoice.id,
+            amount: charge.amount_cents,
+            currency: charge.currency,
+            description: `${charge.description || 'Scheduled charge'} (retry ${charge.retry_count + 1})`,
           });
 
           const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
@@ -330,6 +355,20 @@ export async function GET(request: Request) {
           results.chargesRetried++;
         } catch (retryError) {
           const errorMessage = retryError instanceof Error ? retryError.message : 'Retry failed';
+
+          // Void the retry invoice if it was created but payment failed
+          if (retryInvoiceId) {
+            try {
+              const inv = await stripe.invoices.retrieve(retryInvoiceId);
+              if (inv.status === 'draft') {
+                await stripe.invoices.del(retryInvoiceId);
+              } else if (inv.status === 'open') {
+                await stripe.invoices.voidInvoice(retryInvoiceId);
+              }
+            } catch {
+              // Best effort
+            }
+          }
 
           await supabase
             .from('scheduled_charges')

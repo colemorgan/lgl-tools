@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
         .from('billing_clients')
         .insert({
           name: workspace.name,
+          user_id: user.id,
           status: 'active',
         })
         .select()

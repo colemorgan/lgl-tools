@@ -5,6 +5,7 @@ import {
   Hr,
   Html,
   Img,
+  Preview,
   Section,
   Text,
 } from '@react-email/components';
@@ -21,6 +22,7 @@ export function EmailLayout({ preview, children }: EmailLayoutProps) {
   return (
     <Html>
       <Head />
+      <Preview>{preview}</Preview>
       <Body style={main}>
         <Container style={container}>
           {/* Header with logo */}

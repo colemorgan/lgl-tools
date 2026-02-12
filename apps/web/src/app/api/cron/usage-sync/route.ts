@@ -82,7 +82,7 @@ export async function GET(request: Request) {
         if (minutes > 0) {
           const costDeliveryCents = Math.round(minutes * COST_PER_MINUTE_CENTS);
           const billableAmountCents = Math.round(
-            costDeliveryCents * BILLING_MULTIPLIER
+            minutes * COST_PER_MINUTE_CENTS * BILLING_MULTIPLIER
           );
 
           const { error: insertError } = await supabase
