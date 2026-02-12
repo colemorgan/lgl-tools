@@ -9,4 +9,12 @@ export default withSentryConfig(nextConfig, {
 
   org: "lets-go-live",
   project: "lgl-tools",
+
+  // Don't fail the build if source maps can't be uploaded
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  errorHandler: (err) => {
+    console.warn("Sentry source map upload warning:", err.message);
+  },
 });
