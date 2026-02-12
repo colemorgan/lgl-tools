@@ -8,4 +8,5 @@ export interface Tool {
   description: string;
   icon: string;
   status: 'available' | 'coming_soon';
+  metered?: boolean;
 }

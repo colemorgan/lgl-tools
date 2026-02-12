@@ -22,6 +22,19 @@ import { Spinner } from '@/components/ui/spinner';
 import { WalkthroughTooltip } from '@/components/ui/walkthrough-tooltip';
 import type { BillingClient, ScheduledCharge } from '@/types';
 
+interface UsageData {
+  period_start: string;
+  period_end: string;
+  total_minutes: number;
+  total_cost_cents: number;
+  streams: {
+    stream_id: string;
+    stream_name: string;
+    minutes: number;
+    cost_cents: number;
+  }[];
+}
+
 interface BillingData {
   billing_client: BillingClient | null;
   charges: ScheduledCharge[];
@@ -53,6 +66,7 @@ export function BillingView({ isWorkspaceOwner, showSetupWalkthrough }: BillingV
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageData | null>(null);
   const [updatingPayment, setUpdatingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
@@ -85,7 +99,18 @@ export function BillingView({ isWorkspaceOwner, showSetupWalkthrough }: BillingV
         setLoading(false);
       }
     }
+    async function fetchUsage() {
+      try {
+        const res = await fetch('/api/streams/usage');
+        if (res.ok) {
+          setUsage(await res.json());
+        }
+      } catch {
+        // Usage is non-critical — silently fail
+      }
+    }
     fetchBilling();
+    fetchUsage();
   }, []);
 
   async function handleUpdatePaymentMethod() {
@@ -290,6 +315,60 @@ export function BillingView({ isWorkspaceOwner, showSetupWalkthrough }: BillingV
             Please contact support or update your payment method.
           </p>
         </div>
+      )}
+
+      {/* Usage This Period */}
+      {usage && usage.total_minutes > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Usage This Period</CardTitle>
+            <CardDescription>
+              Streaming usage from {formatDate(usage.period_start)} to {formatDate(usage.period_end)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 mb-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Minutes Watched</p>
+                <p className="text-2xl font-mono font-semibold">{usage.total_minutes.toFixed(1)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Estimated Cost</p>
+                <p className="text-2xl font-mono font-semibold">
+                  {formatCurrency(usage.total_cost_cents, 'usd')}
+                </p>
+              </div>
+            </div>
+            {usage.streams.length > 1 && (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Stream</TableHead>
+                      <TableHead className="text-right">Minutes</TableHead>
+                      <TableHead className="text-right">Cost</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usage.streams
+                      .filter((s) => s.minutes > 0)
+                      .map((s) => (
+                        <TableRow key={s.stream_id}>
+                          <TableCell>{s.stream_name}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {s.minutes.toFixed(1)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(s.cost_cents, 'usd')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Upcoming Charges */}

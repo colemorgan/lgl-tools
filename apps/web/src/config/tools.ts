@@ -19,6 +19,7 @@ export const tools: Tool[] = [
     description: 'Spin up a backup live stream with RTMP ingest and a hosted player page.',
     icon: 'Radio',
     status: 'available',
+    metered: true,
   },
   {
     slug: 'timer',

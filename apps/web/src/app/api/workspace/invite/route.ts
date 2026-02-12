@@ -49,12 +49,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
-    const billingClientId = workspace.billing_client_id;
+    let billingClientId = workspace.billing_client_id;
     if (!billingClientId) {
-      return NextResponse.json(
-        { error: 'Workspace billing not configured' },
-        { status: 400 }
-      );
+      const { data: newClient, error: clientError } = await supabaseAdmin
+        .from('billing_clients')
+        .insert({
+          name: workspace.name,
+          user_id: user.id,
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (clientError) throw clientError;
+
+      billingClientId = newClient.id;
+
+      const { error: updateError } = await supabaseAdmin
+        .from('workspaces')
+        .update({ billing_client_id: billingClientId })
+        .eq('id', ctx.workspaceId);
+
+      if (updateError) throw updateError;
     }
 
     const token = generateToken();

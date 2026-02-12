@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { ExtendTrialDialog } from './extend-trial-dialog';
 import type { Profile } from '@/types';
 
@@ -24,14 +25,24 @@ export function UserDetailCard({ userId }: { userId: string }) {
   const [user, setUser] = useState<UserWithEmail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
 
   useEffect(() => {
     fetch(`/api/admin/users/${userId}`)
       .then((res) => res.json())
-      .then(setUser)
+      .then((data) => {
+        setUser(data);
+        setEditName(data.full_name || '');
+        setEditEmail(data.email || '');
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [userId]);
+
+  const nameChanged = user ? editName !== (user.full_name || '') : false;
+  const emailChanged = user ? editEmail !== (user.email || '') : false;
+  const hasChanges = nameChanged || emailChanged;
 
   async function updateField(field: string, value: string) {
     setSaving(true);
@@ -47,6 +58,30 @@ export function UserDetailCard({ userId }: { userId: string }) {
       }
     } catch (error) {
       console.error('Failed to update:', error);
+    }
+    setSaving(false);
+  }
+
+  async function saveChanges() {
+    setSaving(true);
+    try {
+      const updates: Record<string, string> = {};
+      if (nameChanged) updates.full_name = editName;
+      if (emailChanged) updates.email = editEmail;
+
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const updated = await res.json();
+      if (res.ok) {
+        setUser((prev) => prev ? { ...prev, ...updated } : prev);
+        setEditName(updated.full_name || '');
+        setEditEmail(updated.email || '');
+      }
+    } catch (error) {
+      console.error('Failed to save:', error);
     }
     setSaving(false);
   }
@@ -72,8 +107,22 @@ export function UserDetailCard({ userId }: { userId: string }) {
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
+              <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                disabled={saving}
+                className="max-w-[250px] mt-1"
+              />
+            </div>
+            <div>
               <label className="text-sm font-medium text-muted-foreground">Email</label>
-              <p>{user.email || '-'}</p>
+              <Input
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                disabled={saving}
+                className="max-w-[250px] mt-1"
+              />
             </div>
             <div>
               <label className="text-sm font-medium text-muted-foreground">User ID</label>
@@ -88,6 +137,24 @@ export function UserDetailCard({ userId }: { userId: string }) {
               <p>{new Date(user.created_at).toLocaleString()}</p>
             </div>
           </div>
+          {hasChanges && (
+            <div className="flex items-center gap-2 pt-2">
+              <Button onClick={saveChanges} disabled={saving} size="sm">
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEditName(user.full_name || '');
+                  setEditEmail(user.email || '');
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

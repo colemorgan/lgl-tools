@@ -53,6 +53,11 @@ export function ToolCard({ tool, hasAccess }: ToolCardProps) {
               Coming Soon
             </Badge>
           )}
+          {!isComingSoon && tool.metered && !hasAccess && (
+            <Badge variant="default" className="text-xs">
+              Pro
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent>

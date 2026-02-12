@@ -1,16 +1,20 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { getUser, getProfile } from '@/lib/supabase/server';
 import { hasActiveAccess } from '@/types';
 import { tools } from '@/config/tools';
 import { getWorkspaceContext, needsPaymentSetup } from '@/lib/workspace';
 import { TrialBanner } from '@/components/dashboard/trial-banner';
 import { ToolCard } from '@/components/dashboard/tool-card';
+import { Button } from '@/components/ui/button';
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { CreateWorkspaceDialog } from '@/components/workspace/create-workspace-dialog';
 
 export const metadata = {
   title: 'Dashboard',
@@ -30,10 +34,7 @@ export default async function DashboardPage() {
   }
 
   const wsContext = await getWorkspaceContext(user.id);
-
-  if (needsPaymentSetup(wsContext)) {
-    redirect('/billing?setup_required=true');
-  }
+  const showPaymentSetupBanner = needsPaymentSetup(wsContext);
 
   const isManaged = wsContext?.workspaceType === 'managed';
 
@@ -60,7 +61,39 @@ export default async function DashboardPage() {
           </p>
         </div>
 
+        {showPaymentSetupBanner && (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardHeader>
+              <CardTitle className="text-lg text-amber-900">Payment Method Required</CardTitle>
+              <CardDescription className="text-amber-800">
+                Add a payment method to activate your workspace and access all your
+                tools.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/billing?setup_required=true">
+                <Button size="sm">Set Up Payment</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
         {!isManaged && <TrialBanner profile={profile} />}
+
+        {!isManaged && !wsContext && profile.subscription_status === 'active' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Unlock Metered Tools</CardTitle>
+              <CardDescription>
+                Create a workspace to access live streaming and other metered
+                tools, and invite your team.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CreateWorkspaceDialog />
+            </CardContent>
+          </Card>
+        )}
 
         <section>
           <h2 className="font-heading text-xl font-semibold mb-4">Your Tools</h2>
@@ -76,9 +109,16 @@ export default async function DashboardPage() {
             </Card>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleTools.map((tool) => (
-                <ToolCard key={tool.slug} tool={tool} hasAccess={accessGranted} />
-              ))}
+              {visibleTools.map((tool) => {
+                const toolAccess = accessGranted && !(
+                  !isManaged &&
+                  profile.subscription_status === 'trialing' &&
+                  tool.metered
+                );
+                return (
+                  <ToolCard key={tool.slug} tool={tool} hasAccess={toolAccess} />
+                );
+              })}
             </div>
           )}
         </section>

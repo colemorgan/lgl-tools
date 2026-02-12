@@ -38,6 +38,8 @@ export function StreamDetails({
   const [cloudflareStatus, setCloudflareStatus] = useState<string>('unknown');
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [usageMinutes, setUsageMinutes] = useState<number | null>(null);
+  const [usageCostCents, setUsageCostCents] = useState<number | null>(null);
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const hostedPlayerUrl = `${appUrl}/live/${stream.id}`;
@@ -62,6 +64,27 @@ export function StreamDetails({
     const interval = setInterval(refreshStatus, 10000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.id]);
+
+  useEffect(() => {
+    async function fetchUsage() {
+      try {
+        const res = await fetch('/api/streams/usage');
+        if (res.ok) {
+          const data = await res.json();
+          const streamUsage = data.streams?.find(
+            (s: { stream_id: string }) => s.stream_id === stream.id
+          );
+          if (streamUsage) {
+            setUsageMinutes(streamUsage.minutes);
+            setUsageCostCents(streamUsage.cost_cents);
+          }
+        }
+      } catch {
+        // non-critical
+      }
+    }
+    fetchUsage();
   }, [stream.id]);
 
   const handleDelete = async () => {
@@ -157,6 +180,34 @@ export function StreamDetails({
             </Button>
           </CardContent>
         </Card>
+
+        {/* Usage Stats */}
+        {usageMinutes !== null && usageMinutes > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Usage This Period</CardTitle>
+              <CardDescription>
+                Streaming minutes tracked for the current billing period.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Minutes Watched</p>
+                  <p className="text-lg font-mono font-semibold">
+                    {usageMinutes.toFixed(1)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Estimated Cost</p>
+                  <p className="text-lg font-mono font-semibold">
+                    ${((usageCostCents ?? 0) / 100).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Danger Zone */}
         <Card className="border-destructive/50">
