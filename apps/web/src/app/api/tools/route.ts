@@ -29,8 +29,8 @@ export async function GET() {
 
     const subscriptionStatus = profile?.subscription_status ?? 'expired_trial';
 
-    if (wsContext) {
-      // Managed/workspace user: return tools enabled for their workspace
+    if (wsContext && wsContext.workspaceType === 'managed') {
+      // Managed workspace user: return tools enabled for their workspace
       const { data: workspaceTools } = await admin
         .from('workspace_tools')
         .select('*, tools(*)')

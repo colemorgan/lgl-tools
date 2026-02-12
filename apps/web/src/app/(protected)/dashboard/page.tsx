@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { CreateWorkspaceDialog } from '@/components/workspace/create-workspace-dialog';
+import { WorkspaceUsage } from '@/components/workspace/workspace-usage';
 import type { ToolRecord } from '@/types';
 
 export const metadata = {
@@ -161,6 +162,12 @@ export default async function DashboardPage() {
             </div>
           )}
         </section>
+
+        {wsContext && (
+          <section>
+            <WorkspaceUsage />
+          </section>
+        )}
       </div>
     </div>
   );

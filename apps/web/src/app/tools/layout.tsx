@@ -4,7 +4,6 @@ import { getUser, getProfile } from '@/lib/supabase/server';
 import { checkToolAccess } from '@/lib/tool-access';
 import { SubscriptionGate } from '@/components/tools/subscription-gate';
 import { WorkspaceSuspendedGate } from '@/components/tools/workspace-suspended-gate';
-import { MeteredToolGate } from '@/components/tools/metered-tool-gate';
 import { ToolHeader } from '@/components/tools/tool-header';
 import {
   Card,
@@ -15,6 +14,7 @@ import {
 } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { CreateWorkspaceDialog } from '@/components/workspace/create-workspace-dialog';
 
 export default async function ToolsLayout({
   children,
@@ -51,7 +51,24 @@ export default async function ToolsLayout({
       }
 
       if (access.cta === 'create_workspace') {
-        return <MeteredToolGate />;
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <Card className="max-w-md w-full">
+              <CardHeader className="text-center">
+                <CardTitle>Workspace Required</CardTitle>
+                <CardDescription>
+                  {access.reason || 'This tool requires a workspace. Create one to get started.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 items-center">
+                <CreateWorkspaceDialog />
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/dashboard">Back to Dashboard</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
       }
 
       // Default: tool not available for workspace
