@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let stripeCustomerId: string | null = null;
   try {
     const body = await request.json();
     const { name, company_name } = body;
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
       email: user.email || undefined,
       metadata: { workspace: 'true', user_id: user.id },
     });
+    stripeCustomerId = customer.id;
 
     // Create backing billing_clients row
     const { data: billingClient, error: bcError } = await supabaseAdmin
@@ -115,6 +117,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(workspace, { status: 201 });
   } catch (error) {
     console.error('Self-serve workspace creation error:', error);
+
+    // Clean up orphaned Stripe customer if DB operations failed
+    if (stripeCustomerId) {
+      try {
+        await stripe.customers.del(stripeCustomerId);
+      } catch {
+        // Best effort cleanup
+      }
+    }
+
     return NextResponse.json({ error: 'Failed to create workspace' }, { status: 500 });
   }
 }
