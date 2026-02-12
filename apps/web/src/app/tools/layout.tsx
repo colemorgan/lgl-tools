@@ -5,7 +5,9 @@ import { hasActiveAccess } from '@/types';
 import { getWorkspaceContext } from '@/lib/workspace';
 import { SubscriptionGate } from '@/components/tools/subscription-gate';
 import { WorkspaceSuspendedGate } from '@/components/tools/workspace-suspended-gate';
+import { MeteredToolGate } from '@/components/tools/metered-tool-gate';
 import { ToolHeader } from '@/components/tools/tool-header';
+import { getToolBySlug } from '@/config/tools';
 import {
   Card,
   CardContent,
@@ -36,16 +38,16 @@ export default async function ToolsLayout({
   const wsContext = await getWorkspaceContext(user.id);
   const isManaged = wsContext?.workspaceType === 'managed';
 
+  // Extract tool slug from pathname (shared by both branches)
+  const headerList = await headers();
+  const pathname = headerList.get('x-next-pathname') || '';
+  const toolSlug = pathname.replace('/tools/', '').split('/')[0];
+
   if (isManaged) {
     // Managed workspace: check workspace status
     if (wsContext.workspaceStatus === 'suspended') {
       return <WorkspaceSuspendedGate />;
     }
-
-    // Extract tool slug from pathname
-    const headerList = await headers();
-    const pathname = headerList.get('x-next-pathname') || '';
-    const toolSlug = pathname.replace('/tools/', '').split('/')[0];
 
     if (toolSlug && !wsContext.enabledTools.includes(toolSlug)) {
       return (
@@ -72,6 +74,14 @@ export default async function ToolsLayout({
     const accessGranted = hasActiveAccess(profile);
     if (!accessGranted) {
       return <SubscriptionGate profile={profile} />;
+    }
+
+    // Gate metered tools for trialing users (non-managed)
+    if (profile.subscription_status === 'trialing') {
+      const tool = toolSlug ? getToolBySlug(toolSlug) : undefined;
+      if (tool?.metered) {
+        return <MeteredToolGate />;
+      }
     }
   }
 

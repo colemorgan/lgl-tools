@@ -24,6 +24,8 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
+  AlertTriangle,
+  TrendingUp,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -46,6 +48,13 @@ interface DashboardStats {
     customInvoicesLastMonth: number;
     meteredUsageThisMonth: number;
   };
+  forecast?: {
+    month: string;
+    subscriptions: number;
+    pendingCharges: number;
+    total: number;
+  }[];
+  failedChargesCount?: number;
   pendingChargesCount: number;
   upcomingCharges: {
     id: string;
@@ -91,6 +100,12 @@ function formatRelativeTime(dateStr: string): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   return formatDate(dateStr);
+}
+
+function formatMonth(monthKey: string): string {
+  const [year, month] = monthKey.split('-');
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 function RevenueChange({ current, previous }: { current: number; previous: number }) {
@@ -259,13 +274,73 @@ export function DashboardContent() {
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Technician Subscriptions ($9/mo)</p>
-              <p className="text-xl font-semibold mt-1 text-muted-foreground">--</p>
-              <span className="text-xs text-muted-foreground">Coming soon</span>
+              <p className="text-sm text-muted-foreground">Subscriptions ($9/mo)</p>
+              <p className="text-xl font-semibold mt-1">
+                {formatCents(stats.users.technician * 900)}
+              </p>
+              <span className="text-xs text-muted-foreground">
+                {stats.users.technician} active subscriber{stats.users.technician !== 1 ? 's' : ''}
+              </span>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Failed Charges Alert */}
+      {(stats.failedChargesCount ?? 0) > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+          <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium text-red-800">
+              {stats.failedChargesCount} failed charge{stats.failedChargesCount !== 1 ? 's' : ''} require attention
+            </p>
+            <p className="text-sm text-red-600 mt-1">
+              These charges have failed to process. The system will automatically retry up to 3 times.
+              Review failed charges in the billing section.
+            </p>
+            <Link href="/admin/billing">
+              <Button variant="outline" size="sm" className="mt-2 text-red-700 border-red-300 hover:bg-red-100">
+                View Failed Charges
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Revenue Forecast */}
+      {stats.forecast && stats.forecast.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Revenue Forecast</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  <TableHead className="text-right">Subscriptions</TableHead>
+                  <TableHead className="text-right">Pending Charges</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stats.forecast.map((f) => (
+                  <TableRow key={f.month}>
+                    <TableCell className="font-medium">{formatMonth(f.month)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCents(f.subscriptions)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCents(f.pendingCharges)}</TableCell>
+                    <TableCell className="text-right font-mono font-semibold">{formatCents(f.total)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <p className="text-xs text-muted-foreground mt-3">
+              Based on {stats.users.technician} active subscriber{stats.users.technician !== 1 ? 's' : ''} at $9/mo + scheduled charges
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         {/* Upcoming Invoices */}

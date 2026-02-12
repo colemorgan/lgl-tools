@@ -37,6 +37,8 @@ export async function GET(request: Request) {
     statusUpdates: 0,
     chargesProcessed: 0,
     chargesFailed: 0,
+    chargesRetried: 0,
+    retriesFailed: 0,
     errors: [] as string[],
   };
 
@@ -237,6 +239,133 @@ export async function GET(request: Request) {
               });
             } catch (emailError) {
               results.errors.push(`Error sending charge failed email for charge ${charge.id}: ${emailError}`);
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Retry failed charges (max 3 retries: after 3 days, 7 days, 14 days)
+    const RETRY_DELAYS_DAYS = [3, 7, 14];
+
+    const { data: failedCharges, error: failedChargesError } = await supabase
+      .from('scheduled_charges')
+      .select('*, billing_clients!inner(id, user_id, stripe_customer_id, stripe_payment_method_id, status)')
+      .eq('status', 'failed')
+      .lt('retry_count', 3);
+
+    if (failedChargesError) {
+      results.errors.push(`Error fetching failed charges for retry: ${failedChargesError.message}`);
+    } else if (failedCharges && failedCharges.length > 0) {
+      for (const charge of failedCharges) {
+        const retryDelayDays = RETRY_DELAYS_DAYS[charge.retry_count] ?? RETRY_DELAYS_DAYS[2];
+        const lastAttempt = charge.last_retry_at
+          ? new Date(charge.last_retry_at)
+          : charge.processed_at
+            ? new Date(charge.processed_at)
+            : null;
+
+        if (!lastAttempt) continue;
+
+        const nextRetryDate = new Date(lastAttempt.getTime() + retryDelayDays * 24 * 60 * 60 * 1000);
+        if (now < nextRetryDate) continue;
+
+        const client = charge.billing_clients as unknown as {
+          id: string;
+          user_id: string;
+          stripe_customer_id: string | null;
+          stripe_payment_method_id: string | null;
+          status: string;
+        };
+
+        if (client.status !== 'active' || !client.stripe_customer_id || !client.stripe_payment_method_id) {
+          continue;
+        }
+
+        // Mark as processing for retry
+        await supabase
+          .from('scheduled_charges')
+          .update({ status: 'processing' })
+          .eq('id', charge.id);
+
+        try {
+          await stripe.invoiceItems.create({
+            customer: client.stripe_customer_id,
+            amount: charge.amount_cents,
+            currency: charge.currency,
+            description: `${charge.description || 'Scheduled charge'} (retry ${charge.retry_count + 1})`,
+          });
+
+          const invoice = await stripe.invoices.create({
+            customer: client.stripe_customer_id,
+            default_payment_method: client.stripe_payment_method_id,
+            auto_advance: true,
+            collection_method: 'charge_automatically',
+            metadata: {
+              billing_client_id: client.id,
+              scheduled_charge_id: charge.id,
+              supabase_user_id: client.user_id,
+              retry_count: String(charge.retry_count + 1),
+            },
+          });
+
+          const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+          const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id, {
+            payment_method: client.stripe_payment_method_id!,
+          });
+
+          await supabase
+            .from('scheduled_charges')
+            .update({
+              status: 'succeeded',
+              stripe_invoice_id: paidInvoice.id,
+              stripe_invoice_url: paidInvoice.hosted_invoice_url,
+              stripe_invoice_pdf: paidInvoice.invoice_pdf,
+              processed_at: new Date().toISOString(),
+              retry_count: charge.retry_count + 1,
+              last_retry_at: new Date().toISOString(),
+            })
+            .eq('id', charge.id);
+
+          results.chargesRetried++;
+        } catch (retryError) {
+          const errorMessage = retryError instanceof Error ? retryError.message : 'Retry failed';
+
+          await supabase
+            .from('scheduled_charges')
+            .update({
+              status: 'failed',
+              failure_reason: errorMessage,
+              retry_count: charge.retry_count + 1,
+              last_retry_at: new Date().toISOString(),
+            })
+            .eq('id', charge.id);
+
+          results.retriesFailed++;
+
+          // Send failure email on final retry
+          if (charge.retry_count + 1 >= 3) {
+            const { data: userData } = await supabase.auth.admin.getUserById(client.user_id);
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', client.user_id)
+              .single();
+
+            if (userData?.user?.email) {
+              try {
+                await sendEmail({
+                  to: userData.user.email,
+                  subject: 'Final notice: A scheduled payment has failed',
+                  react: ChargeFailedEmail({
+                    userName: profile?.full_name || 'there',
+                    amount: `$${(charge.amount_cents / 100).toFixed(2)} ${charge.currency.toUpperCase()}`,
+                    description: charge.description || 'Scheduled charge',
+                  }),
+                });
+              } catch (emailError) {
+                results.errors.push(`Error sending retry-failed email for charge ${charge.id}: ${emailError}`);
+              }
             }
           }
         }

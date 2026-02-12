@@ -53,7 +53,7 @@ export async function PATCH(
     const body = await request.json();
     const supabase = createAdminClient();
 
-    const allowedFields = ['subscription_status', 'trial_ends_at', 'role'];
+    const allowedFields = ['subscription_status', 'trial_ends_at', 'role', 'full_name'];
     const updates: Record<string, unknown> = {};
 
     for (const field of allowedFields) {
@@ -62,22 +62,49 @@ export async function PATCH(
       }
     }
 
-    if (Object.keys(updates).length === 0) {
+    // Handle email update via Supabase Auth (not in profiles table)
+    let emailUpdated = false;
+    if (body.email !== undefined) {
+      const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+        email: body.email,
+      });
+      if (authError) {
+        return NextResponse.json({ error: `Failed to update email: ${authError.message}` }, { status: 400 });
+      }
+      emailUpdated = true;
+    }
+
+    if (Object.keys(updates).length === 0 && !emailUpdated) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single();
+    let profileData = null;
+    if (Object.keys(updates).length > 0) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
 
-    if (error) {
-      throw error;
+      if (error) throw error;
+      profileData = data;
+    } else {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      profileData = data;
     }
 
-    return NextResponse.json(data);
+    // Return with email
+    const { data: userData } = await supabase.auth.admin.getUserById(userId);
+
+    return NextResponse.json({
+      ...profileData,
+      email: userData?.user?.email ?? null,
+    });
   } catch (error) {
     console.error('Admin user update error:', error);
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });

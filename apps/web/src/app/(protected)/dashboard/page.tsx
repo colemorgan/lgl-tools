@@ -7,10 +7,12 @@ import { TrialBanner } from '@/components/dashboard/trial-banner';
 import { ToolCard } from '@/components/dashboard/tool-card';
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { CreateWorkspaceDialog } from '@/components/workspace/create-workspace-dialog';
 
 export const metadata = {
   title: 'Dashboard',
@@ -62,6 +64,21 @@ export default async function DashboardPage() {
 
         {!isManaged && <TrialBanner profile={profile} />}
 
+        {!isManaged && !wsContext && profile.subscription_status === 'active' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Unlock Metered Tools</CardTitle>
+              <CardDescription>
+                Create a workspace to access live streaming and other metered
+                tools, and invite your team.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CreateWorkspaceDialog />
+            </CardContent>
+          </Card>
+        )}
+
         <section>
           <h2 className="font-heading text-xl font-semibold mb-4">Your Tools</h2>
           {visibleTools.length === 0 ? (
@@ -76,9 +93,16 @@ export default async function DashboardPage() {
             </Card>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleTools.map((tool) => (
-                <ToolCard key={tool.slug} tool={tool} hasAccess={accessGranted} />
-              ))}
+              {visibleTools.map((tool) => {
+                const toolAccess = accessGranted && !(
+                  !isManaged &&
+                  profile.subscription_status === 'trialing' &&
+                  tool.metered
+                );
+                return (
+                  <ToolCard key={tool.slug} tool={tool} hasAccess={toolAccess} />
+                );
+              })}
             </div>
           )}
         </section>

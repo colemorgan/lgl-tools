@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { ExtendTrialDialog } from './extend-trial-dialog';
 import type { Profile } from '@/types';
 
@@ -72,8 +73,46 @@ export function UserDetailCard({ userId }: { userId: string }) {
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
+              <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  value={user.full_name || ''}
+                  onChange={(e) => setUser((prev) => prev ? { ...prev, full_name: e.target.value } : prev)}
+                  onBlur={(e) => {
+                    if (e.target.value !== (user.full_name || '')) {
+                      updateField('full_name', e.target.value);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  disabled={saving}
+                  className="max-w-[250px]"
+                />
+              </div>
+            </div>
+            <div>
               <label className="text-sm font-medium text-muted-foreground">Email</label>
-              <p>{user.email || '-'}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  value={user.email || ''}
+                  onChange={(e) => setUser((prev) => prev ? { ...prev, email: e.target.value } : prev)}
+                  onBlur={(e) => {
+                    if (e.target.value !== (user.email || '')) {
+                      updateField('email', e.target.value);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  disabled={saving}
+                  className="max-w-[250px]"
+                />
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium text-muted-foreground">User ID</label>

@@ -192,6 +192,43 @@ export async function GET() {
       })
     );
 
+    // Calculate forecasted revenue:
+    // 1. Subscription revenue = active subscribers * $9/mo
+    const subscriptionRevenue = (technicianUsers ?? 0) * 900; // cents
+
+    // 2. Pending charges grouped by month
+    const { data: allPendingCharges } = await supabase
+      .from('scheduled_charges')
+      .select('amount_cents, scheduled_date')
+      .eq('status', 'pending')
+      .order('scheduled_date', { ascending: true });
+
+    const pendingByMonth: Record<string, number> = {};
+    for (const c of allPendingCharges ?? []) {
+      const month = c.scheduled_date.substring(0, 7); // YYYY-MM
+      pendingByMonth[month] = (pendingByMonth[month] ?? 0) + c.amount_cents;
+    }
+
+    // Build forecast for current + next 2 months
+    const forecastMonths: { month: string; subscriptions: number; pendingCharges: number; total: number }[] = [];
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const pending = pendingByMonth[monthKey] ?? 0;
+      forecastMonths.push({
+        month: monthKey,
+        subscriptions: subscriptionRevenue,
+        pendingCharges: pending,
+        total: subscriptionRevenue + pending,
+      });
+    }
+
+    // 3. Failed charges count (for admin alert)
+    const { count: failedChargesCount } = await supabase
+      .from('scheduled_charges')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'failed');
+
     return NextResponse.json({
       workspaces: {
         total: totalWorkspaces ?? 0,
@@ -212,6 +249,8 @@ export async function GET() {
         customInvoicesLastMonth,
         meteredUsageThisMonth: meteredUsageTotal,
       },
+      forecast: forecastMonths,
+      failedChargesCount: failedChargesCount ?? 0,
       pendingChargesCount: pendingChargesCount ?? 0,
       upcomingCharges: formattedUpcoming,
       recentActivity,
