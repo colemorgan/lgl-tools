@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getUser, getProfile } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { hasActiveAccess } from '@/types';
-import { tools } from '@/config/tools';
 import { getWorkspaceContext, needsPaymentSetup } from '@/lib/workspace';
 import { TrialBanner } from '@/components/dashboard/trial-banner';
 import { ToolCard } from '@/components/dashboard/tool-card';
@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { CreateWorkspaceDialog } from '@/components/workspace/create-workspace-dialog';
+import type { ToolRecord } from '@/types';
 
 export const metadata = {
   title: 'Dashboard',
@@ -40,10 +41,41 @@ export default async function DashboardPage() {
 
   const accessGranted = isManaged ? true : hasActiveAccess(profile);
 
-  // Filter tools for managed workspace users
-  const visibleTools = isManaged
-    ? tools.filter((tool) => wsContext.enabledTools.includes(tool.slug))
-    : tools;
+  // Fetch tools from DB
+  const admin = createAdminClient();
+  let visibleTools: ToolRecord[] = [];
+
+  if (isManaged) {
+    // Managed workspace: get tools enabled for the workspace
+    const { data: workspaceTools } = await admin
+      .from('workspace_tools')
+      .select('tools(*)')
+      .eq('workspace_id', wsContext.workspaceId)
+      .eq('is_enabled', true);
+
+    visibleTools = (workspaceTools ?? [])
+      .map((wt) => wt.tools as unknown as ToolRecord)
+      .filter(Boolean)
+      .sort((a, b) => a.sort_order - b.sort_order);
+  } else {
+    // Individual user: all advertised + enabled tools
+    const { data: allTools } = await admin
+      .from('tools')
+      .select('*')
+      .eq('is_advertised', true)
+      .eq('is_enabled', true)
+      .order('sort_order', { ascending: true });
+
+    visibleTools = (allTools ?? []) as ToolRecord[];
+  }
+
+  // Group tools by category
+  const toolsByCategory = visibleTools.reduce<Record<string, ToolRecord[]>>((acc, tool) => {
+    const cat = tool.category;
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(tool);
+    return acc;
+  }, {});
 
   const greeting = profile.full_name
     ? `Welcome back, ${profile.full_name.split(' ')[0]}`
@@ -108,17 +140,24 @@ export default async function DashboardPage() {
               </CardHeader>
             </Card>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleTools.map((tool) => {
-                const toolAccess = accessGranted && !(
-                  !isManaged &&
-                  profile.subscription_status === 'trialing' &&
-                  tool.metered
-                );
-                return (
-                  <ToolCard key={tool.slug} tool={tool} hasAccess={toolAccess} />
-                );
-              })}
+            <div className="space-y-6">
+              {Object.entries(toolsByCategory).map(([category, categoryTools]) => (
+                <div key={category}>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">{category}</h3>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {categoryTools.map((tool) => {
+                      const toolAccess = accessGranted && !(
+                        !isManaged &&
+                        profile.subscription_status === 'trialing' &&
+                        tool.tool_type === 'metered'
+                      );
+                      return (
+                        <ToolCard key={tool.slug} tool={tool} hasAccess={toolAccess} />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>

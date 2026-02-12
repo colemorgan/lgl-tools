@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
-import { tools as allTools } from '@/config/tools';
 
 export async function GET() {
   try {
@@ -148,21 +147,31 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    // Populate workspace_tools — use selections from form if provided, otherwise defaults
-    const toolRows = allTools.map((tool) => ({
-      workspace_id: workspace.id,
-      tool_id: tool.slug,
-      enabled: toolSelections
-        ? (toolSelections[tool.slug] ?? false)
-        : tool.status === 'available',
-    }));
+    // Populate workspace_tools from DB tools registry
+    const { data: dbTools } = await supabase
+      .from('tools')
+      .select('id, slug, is_enabled')
+      .order('sort_order');
 
-    const { error: toolsError } = await supabase
-      .from('workspace_tools')
-      .insert(toolRows);
+    if (dbTools && dbTools.length > 0) {
+      const toolRows = dbTools.map((tool) => ({
+        workspace_id: workspace.id,
+        tool_id: tool.id,
+        is_enabled: toolSelections
+          ? (toolSelections[tool.slug] ?? false)
+          : tool.is_enabled,
+        enabled_at: (toolSelections ? toolSelections[tool.slug] : tool.is_enabled)
+          ? new Date().toISOString()
+          : null,
+      }));
 
-    if (toolsError) {
-      console.error('Failed to populate workspace tools:', toolsError);
+      const { error: toolsError } = await supabase
+        .from('workspace_tools')
+        .insert(toolRows);
+
+      if (toolsError) {
+        console.error('Failed to populate workspace tools:', toolsError);
+      }
     }
 
     return NextResponse.json(workspace, { status: 201 });

@@ -47,12 +47,12 @@ export const getWorkspaceContext = cache(
       stripe_payment_method_id: string | null;
     };
 
-    // Fetch enabled tools for this workspace
-    const { data: tools } = await supabase
+    // Fetch enabled tools for this workspace, joined with tools table for slugs
+    const { data: workspaceTools } = await supabase
       .from('workspace_tools')
-      .select('tool_id')
+      .select('tool_id, tools(slug)')
       .eq('workspace_id', ws.id)
-      .eq('enabled', true);
+      .eq('is_enabled', true);
 
     return {
       workspaceId: ws.id,
@@ -63,7 +63,9 @@ export const getWorkspaceContext = cache(
       billingClientId: ws.billing_client_id,
       stripeCustomerId: ws.stripe_customer_id,
       stripePaymentMethodId: ws.stripe_payment_method_id,
-      enabledTools: (tools ?? []).map((t) => t.tool_id),
+      enabledTools: (workspaceTools ?? []).map(
+        (t) => (t.tools as unknown as { slug: string })?.slug ?? ''
+      ).filter(Boolean),
     };
   }
 );

@@ -23,7 +23,7 @@
     },
     "dev": { "cache": false, "persistent": true },
     "lint": {},
-    "typecheck": { "dependsOn": ["^typecheck"] },
+    "typecheck": { "dependsOn": ["^build"] },
     "test": { "cache": false }
   }
 }

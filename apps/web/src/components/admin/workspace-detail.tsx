@@ -21,22 +21,27 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ToolToggles } from './tool-toggles';
+import { WorkspaceUsageSection } from './workspace-usage-section';
 import { InviteWorkspaceMemberDialog } from './invite-workspace-member-dialog';
 import { AddExistingMemberDialog } from './add-existing-member-dialog';
 import { ChargesTable } from './charges-table';
 import { AddChargeDialog } from './add-charge-dialog';
 import { EditCompanyInfoDialog } from './edit-company-info-dialog';
-import type { Workspace, WorkspaceMember, WorkspaceTool, ClientInvite, ScheduledCharge } from '@/types';
+import type { Workspace, WorkspaceMember, WorkspaceTool, ToolRecord, ClientInvite, ScheduledCharge } from '@/types';
 
 interface MemberWithProfile extends WorkspaceMember {
   full_name: string | null;
   email: string | null;
 }
 
+interface EnrichedWorkspaceTool extends WorkspaceTool {
+  tools: ToolRecord;
+}
+
 interface WorkspaceDetail extends Workspace {
   billing_user_email: string | null;
   members: MemberWithProfile[];
-  tools: WorkspaceTool[];
+  tools: EnrichedWorkspaceTool[];
   invites: ClientInvite[];
   charges: ScheduledCharge[];
 }
@@ -329,8 +334,19 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
           <ToolToggles
             workspaceId={workspaceId}
             workspaceTools={workspace.tools}
+            workspaceType={workspace.type}
             onUpdate={fetchWorkspace}
           />
+        </CardContent>
+      </Card>
+
+      {/* Usage */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Usage (Current Period)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <WorkspaceUsageSection workspaceId={workspaceId} />
         </CardContent>
       </Card>
 

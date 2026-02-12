@@ -12,6 +12,7 @@ export function getToolIcon(iconName: string): LucideIcon {
   return toolIconMap[iconName] || Clock;
 }
 
+/** @deprecated Use tools from DB (public.tools table) instead. Kept for landing page + icon mapping. */
 export const tools: Tool[] = [
   {
     slug: 'live-stream',
@@ -44,6 +45,7 @@ export const tools: Tool[] = [
   },
 ];
 
+/** @deprecated Use DB lookup instead. Kept for backward compatibility. */
 export function getToolBySlug(slug: string): Tool | undefined {
   return tools.find((tool) => tool.slug === slug);
 }

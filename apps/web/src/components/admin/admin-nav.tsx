@@ -24,7 +24,9 @@ const adminLinks = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/workspaces', label: 'Workspaces' },
+  { href: '/admin/tools', label: 'Tools' },
   { href: '/admin/billing', label: 'Billing' },
+  { href: '/admin/usage', label: 'Usage' },
 ];
 
 export function AdminNav({ userName, userEmail }: AdminNavProps) {

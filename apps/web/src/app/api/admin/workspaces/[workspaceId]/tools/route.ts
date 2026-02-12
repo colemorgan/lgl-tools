@@ -2,6 +2,35 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createAdminClient } from '@/lib/supabase/admin';
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ workspaceId: string }> }
+) {
+  try {
+    await requireAdmin();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  try {
+    const { workspaceId } = await params;
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+      .from('workspace_tools')
+      .select('*, tools(*)')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return NextResponse.json(data ?? []);
+  } catch (error) {
+    console.error('Admin workspace tools list error:', error);
+    return NextResponse.json({ error: 'Failed to fetch workspace tools' }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string }> }
@@ -15,11 +44,11 @@ export async function PATCH(
   try {
     const { workspaceId } = await params;
     const body = await request.json();
-    const { tool_id, enabled } = body;
+    const { tool_id, is_enabled } = body;
 
-    if (!tool_id || typeof enabled !== 'boolean') {
+    if (!tool_id || typeof is_enabled !== 'boolean') {
       return NextResponse.json(
-        { error: 'tool_id and enabled (boolean) are required' },
+        { error: 'tool_id (UUID) and is_enabled (boolean) are required' },
         { status: 400 }
       );
     }
@@ -37,11 +66,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
-    // Upsert the tool toggle
+    // Upsert the tool toggle with UUID tool_id
+    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('workspace_tools')
       .upsert(
-        { workspace_id: workspaceId, tool_id, enabled },
+        {
+          workspace_id: workspaceId,
+          tool_id,
+          is_enabled,
+          enabled_at: is_enabled ? now : null,
+          disabled_at: is_enabled ? null : now,
+        },
         { onConflict: 'workspace_id,tool_id' }
       )
       .select()
