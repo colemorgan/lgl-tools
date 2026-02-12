@@ -65,10 +65,12 @@ export async function POST(request: NextRequest) {
 
       billingClientId = newClient.id;
 
-      await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from('workspaces')
         .update({ billing_client_id: billingClientId })
         .eq('id', ctx.workspaceId);
+
+      if (updateError) throw updateError;
     }
 
     const token = generateToken();
