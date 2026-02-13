@@ -392,19 +392,18 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
           )}
 
           {workspace.billing_client_id && (
-            <div className="flex gap-4 pt-4">
-              {workspace.collection_method === 'send_invoice' ? (
+            <div className="flex items-center gap-4 pt-4">
+              <Button
+                onClick={generatePaymentLink}
+                disabled={generatingLink}
+                variant="outline"
+              >
+                {generatingLink ? 'Generating...' : 'Generate Payment Link'}
+              </Button>
+              {workspace.collection_method === 'send_invoice' && (
                 <p className="text-sm text-muted-foreground">
-                  This workspace uses invoice billing. Charges will be sent as invoices with a hosted payment link.
+                  Subsequent charges will be sent as invoices via the Trigger button.
                 </p>
-              ) : (
-                <Button
-                  onClick={generatePaymentLink}
-                  disabled={generatingLink}
-                  variant="outline"
-                >
-                  {generatingLink ? 'Generating...' : 'Generate Payment Link'}
-                </Button>
               )}
             </div>
           )}
