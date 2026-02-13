@@ -134,7 +134,7 @@ export async function POST(
 
         const invoice = await stripe.invoices.create({
           customer: client.stripe_customer_id,
-          default_payment_method: client.stripe_payment_method_id,
+          default_payment_method: client.stripe_payment_method_id!,
           auto_advance: true,
           collection_method: 'charge_automatically',
           metadata: {
