@@ -41,8 +41,40 @@ export async function POST(
       return NextResponse.json({ error: 'Billing client not found' }, { status: 404 });
     }
 
+    // Ensure a Stripe customer exists — create one if missing
     if (!client.stripe_customer_id) {
-      return NextResponse.json({ error: 'No Stripe customer linked' }, { status: 400 });
+      // Check if the workspace already has one we can reuse
+      const { data: wsData } = await supabase
+        .from('workspaces')
+        .select('stripe_customer_id, company_name, contact_email, contact_phone')
+        .eq('id', workspaceId)
+        .single();
+
+      let stripeCustomerId = wsData?.stripe_customer_id as string | null;
+
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          name: wsData?.company_name || client.name || undefined,
+          email: wsData?.contact_email || undefined,
+          phone: wsData?.contact_phone || undefined,
+          metadata: { workspace: 'true' },
+        });
+        stripeCustomerId = customer.id;
+
+        // Persist to workspace
+        await supabase
+          .from('workspaces')
+          .update({ stripe_customer_id: stripeCustomerId })
+          .eq('id', workspaceId);
+      }
+
+      // Persist to billing client
+      await supabase
+        .from('billing_clients')
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq('id', workspace.billing_client_id);
+
+      client.stripe_customer_id = stripeCustomerId;
     }
 
     // Find the first pending charge
