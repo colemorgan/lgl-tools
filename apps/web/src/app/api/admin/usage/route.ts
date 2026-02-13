@@ -17,6 +17,17 @@ export async function GET(request: NextRequest) {
       `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
     const supabase = createAdminClient();
+
+    // Check if usage_events table exists (migration may not be applied yet)
+    const { error: tableCheck } = await supabase
+      .from('usage_events')
+      .select('id')
+      .limit(0);
+
+    if (tableCheck) {
+      return NextResponse.json({ aggregates: [], billing_period: period });
+    }
+
     const result = await aggregateUsageForBilling(supabase, period);
 
     return NextResponse.json(result);

@@ -28,6 +28,17 @@ export async function GET(request: NextRequest) {
       `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
     const admin = createAdminClient();
+
+    // Check if usage_events table exists (migration may not be applied yet)
+    const { error: tableCheck } = await admin
+      .from('usage_events')
+      .select('id')
+      .limit(0);
+
+    if (tableCheck) {
+      return NextResponse.json({ aggregates: [], billing_period: period });
+    }
+
     const result = await aggregateUsageForBilling(admin, period, wsContext.workspaceId);
 
     return NextResponse.json(result);

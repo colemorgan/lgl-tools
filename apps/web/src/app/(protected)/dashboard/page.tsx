@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/card';
 import { CreateWorkspaceDialog } from '@/components/workspace/create-workspace-dialog';
 import { WorkspaceUsage } from '@/components/workspace/workspace-usage';
+import { tools as staticTools } from '@/config/tools';
 import type { ToolRecord } from '@/types';
 
 export const metadata = {
@@ -42,32 +43,60 @@ export default async function DashboardPage() {
 
   const accessGranted = isManaged ? true : hasActiveAccess(profile);
 
-  // Fetch tools from DB
+  // Fetch tools from DB, fall back to static config if migration not applied
   const admin = createAdminClient();
   let visibleTools: ToolRecord[] = [];
 
-  if (isManaged) {
-    // Managed workspace: get tools enabled for the workspace
-    const { data: workspaceTools } = await admin
-      .from('workspace_tools')
-      .select('tools(*)')
-      .eq('workspace_id', wsContext.workspaceId)
-      .eq('is_enabled', true);
+  // Check if new tools table exists
+  const { error: toolsTableCheck } = await admin.from('tools').select('id').limit(0);
+  const hasToolsTable = !toolsTableCheck;
 
-    visibleTools = (workspaceTools ?? [])
-      .map((wt) => wt.tools as unknown as ToolRecord)
-      .filter(Boolean)
-      .sort((a, b) => a.sort_order - b.sort_order);
+  if (hasToolsTable) {
+    if (isManaged) {
+      const { data: workspaceTools } = await admin
+        .from('workspace_tools')
+        .select('tools(*)')
+        .eq('workspace_id', wsContext.workspaceId)
+        .eq('is_enabled', true);
+
+      visibleTools = (workspaceTools ?? [])
+        .map((wt) => wt.tools as unknown as ToolRecord)
+        .filter(Boolean)
+        .sort((a, b) => a.sort_order - b.sort_order);
+    } else {
+      const { data: allTools } = await admin
+        .from('tools')
+        .select('*')
+        .eq('is_advertised', true)
+        .eq('is_enabled', true)
+        .order('sort_order', { ascending: true });
+
+      visibleTools = (allTools ?? []) as ToolRecord[];
+    }
   } else {
-    // Individual user: all advertised + enabled tools
-    const { data: allTools } = await admin
-      .from('tools')
-      .select('*')
-      .eq('is_advertised', true)
-      .eq('is_enabled', true)
-      .order('sort_order', { ascending: true });
+    // Fallback: convert static tools to ToolRecord shape
+    const toolsToShow = isManaged
+      ? staticTools.filter((t) => wsContext.enabledTools.includes(t.slug))
+      : staticTools.filter((t) => t.slug !== 'live-stream');
 
-    visibleTools = (allTools ?? []) as ToolRecord[];
+    visibleTools = toolsToShow.map((t, i) => ({
+      id: t.slug,
+      slug: t.slug,
+      name: t.name,
+      description: t.description,
+      category: 'Tools',
+      icon: t.icon,
+      route_path: `/tools/${t.slug}`,
+      tool_type: t.metered ? 'metered' : 'standard',
+      billing_config: {},
+      is_advertised: true,
+      is_enabled: true,
+      tier_access: t.metered ? ['active'] : ['active', 'trialing'],
+      requires_workspace: !!t.metered,
+      sort_order: i,
+      created_at: '',
+      updated_at: '',
+    })) as ToolRecord[];
   }
 
   // Group tools by category

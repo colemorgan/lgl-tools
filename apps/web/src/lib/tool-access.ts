@@ -20,23 +20,24 @@ export async function checkToolAccess(
 ): Promise<ToolAccessResult> {
   const admin = createAdminClient();
 
-  // 1. Look up tool by slug
-  const { data: tool } = await admin
+  // 1. Look up tool by slug from DB (may not exist if migration not applied)
+  const { data: tool, error: toolError } = await admin
     .from('tools')
     .select('*')
     .eq('slug', toolSlug)
     .maybeSingle();
 
-  if (!tool) {
-    return { allowed: false, reason: 'Tool not found' };
+  const wsContext = await getWorkspaceContext(userId);
+
+  // If tools table doesn't exist yet, fall back to legacy access logic
+  if (toolError || !tool) {
+    return checkToolAccessLegacy(toolSlug, profile, wsContext);
   }
 
   // 2. Global is_enabled check
   if (!tool.is_enabled) {
     return { allowed: false, reason: 'This tool is currently unavailable' };
   }
-
-  const wsContext = await getWorkspaceContext(userId);
 
   // 3. Managed workspace path
   if (wsContext && wsContext.workspaceType === 'managed') {
@@ -92,6 +93,36 @@ export async function checkToolAccess(
       reason: 'This tool requires a workspace. Create one to get started.',
       cta: 'create_workspace',
     };
+  }
+
+  return { allowed: true };
+}
+
+/** Legacy access check when the tools DB table doesn't exist yet */
+function checkToolAccessLegacy(
+  toolSlug: string,
+  profile: Profile,
+  wsContext: Awaited<ReturnType<typeof getWorkspaceContext>>
+): ToolAccessResult {
+  // Managed workspace: check membership + enabled tools list
+  if (wsContext && wsContext.workspaceType === 'managed') {
+    if (wsContext.workspaceStatus === 'suspended') {
+      return { allowed: false, reason: 'Your workspace is currently suspended', cta: 'contact_admin' };
+    }
+    if (!wsContext.enabledTools.includes(toolSlug)) {
+      return { allowed: false, reason: 'This tool is not enabled for your workspace.', cta: 'contact_admin' };
+    }
+    return { allowed: true };
+  }
+
+  // Individual user: check subscription
+  if (!hasActiveAccess(profile)) {
+    return { allowed: false, reason: 'Active subscription required', cta: 'subscribe' };
+  }
+
+  // Metered tools require paid subscription (not trialing)
+  if (toolSlug === 'live-stream' && profile.subscription_status === 'trialing') {
+    return { allowed: false, reason: 'This tool requires an active paid subscription', cta: 'subscribe' };
   }
 
   return { allowed: true };

@@ -47,12 +47,30 @@ export const getWorkspaceContext = cache(
       stripe_payment_method_id: string | null;
     };
 
-    // Fetch enabled tools for this workspace, joined with tools table for slugs
-    const { data: workspaceTools } = await supabase
+    // Fetch enabled tools — try new schema first (is_enabled + tools FK join),
+    // fall back to old schema (enabled + tool_id as text slug) if migration not applied
+    let enabledTools: string[] = [];
+
+    const { data: newSchemaTools, error: newSchemaError } = await supabase
       .from('workspace_tools')
       .select('tool_id, tools(slug)')
       .eq('workspace_id', ws.id)
       .eq('is_enabled', true);
+
+    if (!newSchemaError && newSchemaTools) {
+      enabledTools = newSchemaTools.map(
+        (t) => (t.tools as unknown as { slug: string })?.slug ?? ''
+      ).filter(Boolean);
+    } else {
+      // Fallback: old schema where tool_id is the slug and column is "enabled"
+      const { data: oldSchemaTools } = await supabase
+        .from('workspace_tools')
+        .select('tool_id')
+        .eq('workspace_id', ws.id)
+        .eq('enabled', true);
+
+      enabledTools = (oldSchemaTools ?? []).map((t) => t.tool_id as string).filter(Boolean);
+    }
 
     return {
       workspaceId: ws.id,
@@ -63,9 +81,7 @@ export const getWorkspaceContext = cache(
       billingClientId: ws.billing_client_id,
       stripeCustomerId: ws.stripe_customer_id,
       stripePaymentMethodId: ws.stripe_payment_method_id,
-      enabledTools: (workspaceTools ?? []).map(
-        (t) => (t.tools as unknown as { slug: string })?.slug ?? ''
-      ).filter(Boolean),
+      enabledTools,
     };
   }
 );
