@@ -99,10 +99,15 @@ export async function POST(request: Request) {
             }
           }
 
+          // For ACH/bank transfers, payment_status is 'unpaid' at session completion.
+          // Only mark succeeded when payment has actually settled; the
+          // payment_intent.succeeded webhook handles the async settlement.
+          const chargeStatus = session.payment_status === 'paid' ? 'succeeded' : 'processing';
+
           await supabaseAdmin
             .from('scheduled_charges')
             .update({
-              status: 'succeeded',
+              status: chargeStatus,
               stripe_payment_intent_id: session.payment_intent as string,
               stripe_invoice_url: receiptUrl,
               processed_at: new Date().toISOString(),
@@ -163,6 +168,22 @@ export async function POST(request: Request) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
+
+        // Handle billing client invoice failures (send_invoice mode)
+        const failedScheduledChargeId = invoice.metadata?.scheduled_charge_id;
+        if (failedScheduledChargeId) {
+          const failureMessage = invoice.last_finalization_error?.message || 'Invoice payment failed';
+          await supabaseAdmin
+            .from('scheduled_charges')
+            .update({
+              status: 'failed',
+              failure_reason: failureMessage,
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', failedScheduledChargeId)
+            .neq('status', 'succeeded');
+        }
+
         const subscriptionId = invoice.parent?.subscription_details?.subscription;
         if (subscriptionId && invoice.customer) {
           const customerId = invoice.customer as string;

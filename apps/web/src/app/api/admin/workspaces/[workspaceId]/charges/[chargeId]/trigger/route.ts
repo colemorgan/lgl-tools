@@ -125,23 +125,25 @@ export async function POST(
         });
       } else {
         // Auto-charge mode: create invoice and pay immediately
-        await stripe.invoiceItems.create({
-          customer: client.stripe_customer_id,
-          amount: charge.amount_cents,
-          currency: charge.currency,
-          description: charge.description || 'Scheduled charge',
-        });
-
         const invoice = await stripe.invoices.create({
           customer: client.stripe_customer_id,
           default_payment_method: client.stripe_payment_method_id!,
           auto_advance: true,
           collection_method: 'charge_automatically',
+          pending_invoice_items_behavior: 'exclude',
           metadata: {
             billing_client_id: billingClientId,
             scheduled_charge_id: chargeId,
             supabase_user_id: client.user_id,
           },
+        });
+
+        await stripe.invoiceItems.create({
+          customer: client.stripe_customer_id,
+          invoice: invoice.id,
+          amount: charge.amount_cents,
+          currency: charge.currency,
+          description: charge.description || 'Scheduled charge',
         });
 
         const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
