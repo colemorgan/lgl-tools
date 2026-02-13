@@ -17,16 +17,18 @@ export async function POST(
     const { workspaceId } = await params;
     const supabase = createAdminClient();
 
-    // Get workspace → billing_client_id
+    // Get workspace → billing_client_id + billing settings
     const { data: workspace, error: wsError } = await supabase
       .from('workspaces')
-      .select('billing_client_id')
+      .select('billing_client_id, allowed_payment_methods')
       .eq('id', workspaceId)
       .single();
 
     if (wsError || !workspace?.billing_client_id) {
       return NextResponse.json({ error: 'Workspace not found or has no billing client' }, { status: 404 });
     }
+
+    const allowedPaymentMethods = (workspace.allowed_payment_methods as string[]) ?? ['card'];
 
     // Get billing client
     const { data: client, error: clientError } = await supabase
@@ -39,8 +41,40 @@ export async function POST(
       return NextResponse.json({ error: 'Billing client not found' }, { status: 404 });
     }
 
+    // Ensure a Stripe customer exists — create one if missing
     if (!client.stripe_customer_id) {
-      return NextResponse.json({ error: 'No Stripe customer linked' }, { status: 400 });
+      // Check if the workspace already has one we can reuse
+      const { data: wsData } = await supabase
+        .from('workspaces')
+        .select('stripe_customer_id, company_name, contact_email, contact_phone')
+        .eq('id', workspaceId)
+        .single();
+
+      let stripeCustomerId = wsData?.stripe_customer_id as string | null;
+
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          name: wsData?.company_name || client.name || undefined,
+          email: wsData?.contact_email || undefined,
+          phone: wsData?.contact_phone || undefined,
+          metadata: { workspace: 'true' },
+        });
+        stripeCustomerId = customer.id;
+
+        // Persist to workspace
+        await supabase
+          .from('workspaces')
+          .update({ stripe_customer_id: stripeCustomerId })
+          .eq('id', workspaceId);
+      }
+
+      // Persist to billing client
+      await supabase
+        .from('billing_clients')
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq('id', workspace.billing_client_id);
+
+      client.stripe_customer_id = stripeCustomerId;
     }
 
     // Find the first pending charge
@@ -57,11 +91,13 @@ export async function POST(
       return NextResponse.json({ error: 'No pending charges found' }, { status: 400 });
     }
 
-    // Create Stripe Checkout session
+    // Create Stripe Checkout session with workspace-specific payment methods
+    const paymentMethodTypes = allowedPaymentMethods as ('card' | 'us_bank_account')[];
+
     const session = await stripe.checkout.sessions.create({
       customer: client.stripe_customer_id,
       mode: 'payment',
-      payment_method_types: ['card'],
+      payment_method_types: paymentMethodTypes,
       line_items: [
         {
           price_data: {
@@ -75,7 +111,7 @@ export async function POST(
         },
       ],
       payment_intent_data: {
-        setup_future_usage: 'off_session',
+        setup_future_usage: allowedPaymentMethods.includes('card') ? 'off_session' : undefined,
         metadata: {
           billing_client_id: workspace.billing_client_id,
           scheduled_charge_id: charge.id,

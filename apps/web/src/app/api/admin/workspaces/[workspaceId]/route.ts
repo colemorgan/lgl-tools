@@ -132,9 +132,12 @@ export async function PATCH(
       contact_email,
       contact_phone,
       notes,
+      collection_method,
+      allowed_payment_methods,
+      days_until_due,
     } = body;
 
-    const updates: Record<string, string | null> = {};
+    const updates: Record<string, unknown> = {};
     if (name) updates.name = name;
     if (status && ['active', 'suspended', 'closed'].includes(status)) updates.status = status;
     if (company_name !== undefined) updates.company_name = company_name || null;
@@ -148,6 +151,21 @@ export async function PATCH(
     if (contact_email !== undefined) updates.contact_email = contact_email || null;
     if (contact_phone !== undefined) updates.contact_phone = contact_phone || null;
     if (notes !== undefined) updates.notes = notes || null;
+    if (collection_method !== undefined && ['charge_automatically', 'send_invoice'].includes(collection_method)) {
+      updates.collection_method = collection_method;
+    }
+    if (allowed_payment_methods !== undefined && Array.isArray(allowed_payment_methods)) {
+      const validMethods = allowed_payment_methods.filter((m: string) => ['card', 'us_bank_account'].includes(m));
+      if (validMethods.length > 0) {
+        updates.allowed_payment_methods = validMethods;
+      }
+    }
+    if (days_until_due !== undefined) {
+      const days = Number(days_until_due);
+      if (days > 0 && days <= 365) {
+        updates.days_until_due = days;
+      }
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });

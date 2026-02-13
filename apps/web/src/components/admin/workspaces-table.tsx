@@ -45,6 +45,7 @@ export function WorkspacesTable() {
             <TableHead>Name</TableHead>
             <TableHead>Company</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Billing</TableHead>
             <TableHead>Members</TableHead>
             <TableHead>Pending Charges</TableHead>
             <TableHead>Payment</TableHead>
@@ -55,13 +56,13 @@ export function WorkspacesTable() {
         <TableBody>
           {loading ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                 Loading...
               </TableCell>
             </TableRow>
           ) : workspaces.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                 No workspaces yet
               </TableCell>
             </TableRow>
@@ -72,6 +73,13 @@ export function WorkspacesTable() {
                 <TableCell className="text-muted-foreground">{ws.company_name || '--'}</TableCell>
                 <TableCell>
                   <Badge variant={statusVariant[ws.status]}>{ws.status}</Badge>
+                </TableCell>
+                <TableCell>
+                  {ws.collection_method === 'send_invoice' ? (
+                    <Badge variant="secondary">Invoice</Badge>
+                  ) : (
+                    <Badge variant="outline">Auto-charge</Badge>
+                  )}
                 </TableCell>
                 <TableCell>{ws.member_count}</TableCell>
                 <TableCell>{ws.pending_charges_count}</TableCell>

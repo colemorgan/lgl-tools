@@ -26,7 +26,9 @@ import { AddExistingMemberDialog } from './add-existing-member-dialog';
 import { ChargesTable } from './charges-table';
 import { AddChargeDialog } from './add-charge-dialog';
 import { EditCompanyInfoDialog } from './edit-company-info-dialog';
-import type { Workspace, WorkspaceMember, WorkspaceTool, ClientInvite, ScheduledCharge } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import type { Workspace, WorkspaceMember, WorkspaceTool, ClientInvite, ScheduledCharge, CollectionMethod, PaymentMethodType } from '@/types';
 
 interface MemberWithProfile extends WorkspaceMember {
   full_name: string | null;
@@ -46,6 +48,7 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingBilling, setSavingBilling] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
 
@@ -77,6 +80,28 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
       console.error('Failed to update status:', error);
     }
     setSaving(false);
+  }
+
+  async function updateBillingSettings(updates: {
+    collection_method?: CollectionMethod;
+    allowed_payment_methods?: PaymentMethodType[];
+    days_until_due?: number;
+  }) {
+    setSavingBilling(true);
+    try {
+      const res = await fetch(`/api/admin/workspaces/${workspaceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setWorkspace((prev) => (prev ? { ...prev, ...updated } : prev));
+      }
+    } catch (error) {
+      console.error('Failed to update billing settings:', error);
+    }
+    setSavingBilling(false);
   }
 
   async function handleVerifyCard() {
@@ -190,7 +215,9 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
             <div>
               <label className="text-sm font-medium text-muted-foreground">Payment Method</label>
               <div className="flex items-center gap-2">
-                {workspace.stripe_payment_method_id ? (
+                {workspace.collection_method === 'send_invoice' ? (
+                  <Badge variant="secondary">Invoice (ACH/Bank Transfer)</Badge>
+                ) : workspace.stripe_payment_method_id ? (
                   <Badge variant="default">Card on file</Badge>
                 ) : (
                   <>
@@ -289,8 +316,83 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
             </div>
           )}
 
+          {/* Billing Settings */}
+          {workspace.type === 'managed' && (
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="text-sm font-semibold text-foreground">Billing Settings</h4>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Billing Mode</Label>
+                  <div className="mt-1">
+                    <Select
+                      value={workspace.collection_method}
+                      onValueChange={(value: CollectionMethod) => {
+                        const updates: {
+                          collection_method: CollectionMethod;
+                          allowed_payment_methods?: PaymentMethodType[];
+                        } = { collection_method: value };
+                        if (value === 'send_invoice') {
+                          updates.allowed_payment_methods = ['us_bank_account'];
+                        } else {
+                          updates.allowed_payment_methods = ['card'];
+                        }
+                        updateBillingSettings(updates);
+                      }}
+                      disabled={savingBilling}
+                    >
+                      <SelectTrigger className="w-[280px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="charge_automatically">Auto-Charge Card</SelectItem>
+                        <SelectItem value="send_invoice">Send Invoice (ACH/Bank Transfer)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {workspace.collection_method === 'send_invoice' && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Net Terms (days)</Label>
+                    <div className="mt-1">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={workspace.days_until_due}
+                        className="w-[120px]"
+                        disabled={savingBilling}
+                        onChange={(e) => {
+                          const days = parseInt(e.target.value, 10);
+                          if (days > 0 && days <= 365) {
+                            updateBillingSettings({ days_until_due: days });
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Accepted Payment Methods</Label>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {(workspace.allowed_payment_methods ?? ['card']).map((method) => (
+                      <Badge key={method} variant="outline">
+                        {method === 'card' ? 'Card' : 'ACH / Bank Transfer'}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {workspace.collection_method === 'send_invoice' && (
+                <p className="text-xs text-muted-foreground">
+                  Invoices will be emailed to the client via Stripe with a hosted payment page.
+                  ACH payments typically settle in 4-5 business days.
+                </p>
+              )}
+            </div>
+          )}
+
           {workspace.billing_client_id && (
-            <div className="flex gap-4 pt-4">
+            <div className="flex items-center gap-4 pt-4">
               <Button
                 onClick={generatePaymentLink}
                 disabled={generatingLink}
@@ -298,6 +400,11 @@ export function WorkspaceDetailView({ workspaceId }: { workspaceId: string }) {
               >
                 {generatingLink ? 'Generating...' : 'Generate Payment Link'}
               </Button>
+              {workspace.collection_method === 'send_invoice' && (
+                <p className="text-sm text-muted-foreground">
+                  Subsequent charges will be sent as invoices via the Trigger button.
+                </p>
+              )}
             </div>
           )}
         </CardContent>
