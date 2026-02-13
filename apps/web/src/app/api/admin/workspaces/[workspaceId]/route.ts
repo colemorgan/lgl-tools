@@ -53,12 +53,12 @@ export async function GET(
       })
     );
 
-    // Fetch tools
+    // Fetch tools with joined tool details
     const { data: workspaceTools } = await supabase
       .from('workspace_tools')
-      .select('*')
+      .select('*, tools(*)')
       .eq('workspace_id', workspaceId)
-      .order('tool_id', { ascending: true });
+      .order('created_at', { ascending: true });
 
     // Fetch charges via billing_client_id
     let charges: unknown[] = [];

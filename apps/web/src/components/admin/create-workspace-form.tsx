@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,8 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { tools } from '@/config/tools';
 import { getToolIcon } from '@/config/tools';
+import type { ToolRecord } from '@/types';
 
 export function CreateWorkspaceForm() {
   const router = useRouter();
@@ -25,15 +25,24 @@ export function CreateWorkspaceForm() {
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [notes, setNotes] = useState('');
-  const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    tools.forEach((tool) => {
-      initial[tool.slug] = tool.status === 'available';
-    });
-    return initial;
-  });
+  const [dbTools, setDbTools] = useState<ToolRecord[]>([]);
+  const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/tools')
+      .then((res) => res.json())
+      .then((tools: ToolRecord[]) => {
+        setDbTools(tools);
+        const initial: Record<string, boolean> = {};
+        tools.forEach((tool) => {
+          initial[tool.slug] = tool.is_enabled;
+        });
+        setEnabledTools(initial);
+      })
+      .catch(console.error);
+  }, []);
 
   function toggleTool(slug: string) {
     setEnabledTools((prev) => ({ ...prev, [slug]: !prev[slug] }));
@@ -229,7 +238,7 @@ export function CreateWorkspaceForm() {
         <div className="space-y-3">
           <Label>Enabled Tools</Label>
           <div className="grid gap-3 sm:grid-cols-2">
-            {tools.map((tool) => {
+            {dbTools.map((tool) => {
               const Icon = getToolIcon(tool.icon);
               return (
                 <label

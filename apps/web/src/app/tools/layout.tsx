@@ -1,13 +1,10 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { getUser, getProfile } from '@/lib/supabase/server';
-import { hasActiveAccess } from '@/types';
-import { getWorkspaceContext } from '@/lib/workspace';
+import { checkToolAccess } from '@/lib/tool-access';
 import { SubscriptionGate } from '@/components/tools/subscription-gate';
 import { WorkspaceSuspendedGate } from '@/components/tools/workspace-suspended-gate';
-import { MeteredToolGate } from '@/components/tools/metered-tool-gate';
 import { ToolHeader } from '@/components/tools/tool-header';
-import { getToolBySlug } from '@/config/tools';
 import {
   Card,
   CardContent,
@@ -17,6 +14,7 @@ import {
 } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { CreateWorkspaceDialog } from '@/components/workspace/create-workspace-dialog';
 
 export default async function ToolsLayout({
   children,
@@ -35,30 +33,51 @@ export default async function ToolsLayout({
     redirect('/login');
   }
 
-  const wsContext = await getWorkspaceContext(user.id);
-  const isManaged = wsContext?.workspaceType === 'managed';
-
-  // Extract tool slug from pathname (shared by both branches)
+  // Extract tool slug from pathname
   const headerList = await headers();
   const pathname = headerList.get('x-next-pathname') || '';
   const toolSlug = pathname.replace('/tools/', '').split('/')[0];
 
-  if (isManaged) {
-    // Managed workspace: check workspace status
-    if (wsContext.workspaceStatus === 'suspended') {
-      return <WorkspaceSuspendedGate />;
-    }
+  if (toolSlug) {
+    const access = await checkToolAccess(toolSlug, profile, user.id);
 
-    if (toolSlug && !wsContext.enabledTools.includes(toolSlug)) {
+    if (!access.allowed) {
+      if (access.cta === 'subscribe') {
+        return <SubscriptionGate profile={profile} />;
+      }
+
+      if (access.reason?.includes('suspended')) {
+        return <WorkspaceSuspendedGate />;
+      }
+
+      if (access.cta === 'create_workspace') {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <Card className="max-w-md w-full">
+              <CardHeader className="text-center">
+                <CardTitle>Workspace Required</CardTitle>
+                <CardDescription>
+                  {access.reason || 'This tool requires a workspace. Create one to get started.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 items-center">
+                <CreateWorkspaceDialog />
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/dashboard">Back to Dashboard</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
+      // Default: tool not available for workspace
       return (
         <div className="min-h-screen flex items-center justify-center p-4">
           <Card className="max-w-md w-full">
             <CardHeader className="text-center">
               <CardTitle>Tool Not Available</CardTitle>
-              <CardDescription>
-                This tool is not enabled for your workspace. Contact your
-                workspace administrator to request access.
-              </CardDescription>
+              <CardDescription>{access.reason}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               <Button asChild variant="outline">
@@ -68,20 +87,6 @@ export default async function ToolsLayout({
           </Card>
         </div>
       );
-    }
-  } else {
-    // Individual subscription check
-    const accessGranted = hasActiveAccess(profile);
-    if (!accessGranted) {
-      return <SubscriptionGate profile={profile} />;
-    }
-
-    // Gate metered tools for trialing users (non-managed)
-    if (profile.subscription_status === 'trialing') {
-      const tool = toolSlug ? getToolBySlug(toolSlug) : undefined;
-      if (tool?.metered) {
-        return <MeteredToolGate />;
-      }
     }
   }
 

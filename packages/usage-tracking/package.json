@@ -1,0 +1,23 @@
+{
+  "name": "@lgl/usage-tracking",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"No lint configured for @lgl/usage-tracking\"",
+    "test": "echo \"No tests configured for @lgl/usage-tracking\""
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.91.0"
+  }
+}

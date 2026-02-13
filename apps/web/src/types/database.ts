@@ -97,11 +97,51 @@ export interface WorkspaceMember {
   created_at: string;
 }
 
+export type ToolType = 'standard' | 'metered' | 'external';
+
+export interface ToolRecord {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  icon: string;
+  route_path: string | null;
+  tool_type: ToolType;
+  billing_config: Record<string, unknown>;
+  is_advertised: boolean;
+  is_enabled: boolean;
+  tier_access: string[];
+  requires_workspace: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WorkspaceTool {
   id: string;
   workspace_id: string;
   tool_id: string;
-  enabled: boolean;
+  is_enabled: boolean;
+  pricing_override: Record<string, unknown> | null;
+  config_override: Record<string, unknown> | null;
+  enabled_at: string | null;
+  disabled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UsageEvent {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  tool_id: string;
+  event_type: string;
+  quantity: number;
+  unit_cost_snapshot: number;
+  metadata: Record<string, unknown>;
+  billing_period: string;
+  billed: boolean;
   created_at: string;
 }
 

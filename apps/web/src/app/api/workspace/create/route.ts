@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
-import { tools as allTools } from '@/config/tools';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -104,15 +103,23 @@ export async function POST(request: NextRequest) {
 
     if (memberError) throw memberError;
 
-    // Enable all available tools
-    const toolRows = allTools.map((tool) => ({
-      workspace_id: workspace.id,
-      tool_id: tool.slug,
-      enabled: tool.status === 'available',
-    }));
+    // Enable all available tools from DB registry
+    const { data: dbTools } = await supabaseAdmin
+      .from('tools')
+      .select('id, is_enabled')
+      .order('sort_order');
 
-    const { error: toolsError } = await supabaseAdmin.from('workspace_tools').insert(toolRows);
-    if (toolsError) throw toolsError;
+    if (dbTools && dbTools.length > 0) {
+      const toolRows = dbTools.map((tool) => ({
+        workspace_id: workspace.id,
+        tool_id: tool.id,
+        is_enabled: tool.is_enabled,
+        enabled_at: tool.is_enabled ? new Date().toISOString() : null,
+      }));
+
+      const { error: toolsError } = await supabaseAdmin.from('workspace_tools').insert(toolRows);
+      if (toolsError) throw toolsError;
+    }
 
     return NextResponse.json(workspace, { status: 201 });
   } catch (error) {

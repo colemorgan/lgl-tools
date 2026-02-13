@@ -1,4 +1,4 @@
-export type { SubscriptionStatus, UserRole, BillingClientStatus, ChargeStatus, LiveStreamStatus, WorkspaceType, WorkspaceStatus, WorkspaceMemberRole, Profile, BillingClient, ScheduledCharge, ClientInvite, LiveStream, StreamUsageRecord, Workspace, WorkspaceMember, WorkspaceTool } from './database';
+export type { SubscriptionStatus, UserRole, BillingClientStatus, ChargeStatus, LiveStreamStatus, WorkspaceType, WorkspaceStatus, WorkspaceMemberRole, ToolType, Profile, BillingClient, ScheduledCharge, ClientInvite, LiveStream, StreamUsageRecord, Workspace, WorkspaceMember, WorkspaceTool, ToolRecord, UsageEvent } from './database';
 export { hasActiveAccess, hasWorkspaceAccess, getTrialDaysRemaining, isAdmin } from './database';
 export type { WorkspaceContext } from '@/lib/workspace';
 

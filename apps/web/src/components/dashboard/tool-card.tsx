@@ -9,17 +9,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getToolIcon } from '@/config/tools';
-import type { Tool } from '@/types';
+import type { ToolRecord } from '@/types';
 
 interface ToolCardProps {
-  tool: Tool;
+  tool: ToolRecord;
   hasAccess: boolean;
 }
 
 export function ToolCard({ tool, hasAccess }: ToolCardProps) {
   const Icon = getToolIcon(tool.icon);
-  const isComingSoon = tool.status === 'coming_soon';
-  const isDisabled = isComingSoon || !hasAccess;
+  const isDisabled = !hasAccess;
 
   const cardContent = (
     <Card
@@ -48,14 +47,14 @@ export function ToolCard({ tool, hasAccess }: ToolCardProps) {
             </div>
             <CardTitle className="text-lg">{tool.name}</CardTitle>
           </div>
-          {isComingSoon && (
-            <Badge variant="secondary" className="text-xs">
-              Coming Soon
-            </Badge>
-          )}
-          {!isComingSoon && tool.metered && !hasAccess && (
+          {tool.tool_type === 'metered' && !hasAccess && (
             <Badge variant="default" className="text-xs">
               Pro
+            </Badge>
+          )}
+          {tool.tool_type === 'metered' && hasAccess && (
+            <Badge variant="secondary" className="text-xs">
+              Metered
             </Badge>
           )}
         </div>
@@ -73,7 +72,7 @@ export function ToolCard({ tool, hasAccess }: ToolCardProps) {
   }
 
   return (
-    <Link href={`/tools/${tool.slug}`} target="_blank" rel="noopener">
+    <Link href={tool.route_path || `/tools/${tool.slug}`} target="_blank" rel="noopener">
       {cardContent}
     </Link>
   );
